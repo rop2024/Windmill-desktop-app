@@ -1,0 +1,8 @@
+[Event "Chess.com Rapid"]
+[Site "Chess.com"]
+[White "Alice"]
+[Black "Bob"]
+[TimeControl "10+0"]
+[Result "*"]
+
+1. e4 {[%clk 0:10:00]} e5 {[%clk 0:09:59]} 2. Nf3 {[%clk 0:09:58]} Nc6 {[%clk 0:09:57]} *

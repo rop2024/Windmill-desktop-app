@@ -1,0 +1,10 @@
+C00	King's Pawn Opening	1. e4
+C20	King's Knight Opening	1. e4 e5 2. Nf3
+C50	Giuoco Piano	1. e4 e5 2. Nf3 Nc6 3. Bc4
+C55	Two Knights Defense	1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
+C65	Ruy Lopez	1. e4 e5 2. Nf3 Nc6 3. Bb5
+C78	Ruy Lopez Closed	1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
+D20	Queen's Gambit	1. d4 d5 2. c4
+A00	Reti Opening	1. Nf3
+B20	Sicilian Defense	1. e4 c5
+A10	English Opening	1. c4

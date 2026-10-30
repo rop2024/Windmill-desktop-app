@@ -1,0 +1,7 @@
+[Event "Comments Test"]
+[White "Alice"]
+[Black "Bob"]
+[Result "1/2-1/2"]
+
+1. e4 {This is a comment} e5 2. Nf3 ; line comment here
+Nc6 {another comment} 1/2-1/2

@@ -1,0 +1,13 @@
+[Event "Multi Game 1"]
+[White "Alice"]
+[Black "Bob"]
+[Result "1-0"]
+
+1. e4 e5 2. Nf3 1-0
+
+[Event "Multi Game 2"]
+[White "Carol"]
+[Black "Dan"]
+[Result "0-1"]
+
+1. d4 d5 2. c4 0-1

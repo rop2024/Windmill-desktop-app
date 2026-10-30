@@ -1,0 +1,6 @@
+[Event "Malformed"]
+[White "Alice"]
+[Black "Bob"]
+[Result "*"]
+
+1. a3 a6 2. Ra3 *

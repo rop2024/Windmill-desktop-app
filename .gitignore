@@ -1,0 +1,17 @@
+node_modules/
+.electron/
+dist/
+out/
+chess.db
+*.db
+*.local
+.env
+.env.local
+coverage/
+playwright-report/
+test-results/
+blobs/
+trace/
+.vite/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,6 @@
+[Event "Promotion Test"]
+[White "Alice"]
+[Black "Bob"]
+[Result "*"]
+
+1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. e5 dxe5 6. Nxe5 Qe7 7. a4 b5 8. axb5 axb5 9. b6 axb6 10. a7 b1=N 11. a8=Q *
