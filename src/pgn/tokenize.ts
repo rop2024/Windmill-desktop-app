@@ -11,7 +11,7 @@ export type PgnToken =
 const RESULT_RE = /^(1-0|0-1|1\/2-1\/2|\*)\b/
 const MOVE_NUM_RE = /^(\d+)(\.{1,3})/
 const NAG_RE = /^\$(\d+)|^([!?]{1,2})/
-const STRUCTURAL = /\s|\(|\)|\{|;|$/
+const STRUCTURAL = /[\s(){;]/
 
 function scanUntilStructural(text: string, start: number): number {
   let i = start

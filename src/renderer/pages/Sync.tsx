@@ -53,8 +53,8 @@ export default function Sync() {
     const unsub = window.api.sync.onProgress((p: unknown) => {
       const progress = p as SyncProgress
       setProgress(progress)
-      setSyncing(progress.stage !== 'done' && progress.stage !== 'idle')
-      if (progress.stage === 'done' || progress.stage === 'idle') {
+      setSyncing(progress.stage !== 'done' && progress.stage !== 'idle' && progress.stage !== 'error')
+      if (progress.stage === 'done' || progress.stage === 'idle' || progress.stage === 'error') {
         loadStatus()
       }
     })
@@ -114,7 +114,7 @@ export default function Sync() {
             />
           </div>
           <div className="flex gap-3">
-            <PrimaryButton onClick={handleSync} disabled={syncing || !username.trim()}>
+            <PrimaryButton onClick={handleSync} disabled={syncing || (!username.trim() && !status.username)}>
               {syncing ? 'Syncing…' : 'Sync now'}
             </PrimaryButton>
             <button
@@ -153,7 +153,7 @@ export default function Sync() {
             <span className="text-text-muted font-mono uppercase text-xs">Source</span>
             <span className="text-text-primary font-mono">Chess.com → chess.db</span>
           </div>
-          {progress && progress.stage !== 'done' && progress.stage !== 'idle' && (
+          {progress && progress.stage !== 'done' && progress.stage !== 'idle' && progress.stage !== 'error' && (
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span className="text-text-muted font-mono uppercase">Progress</span>
@@ -191,6 +191,12 @@ export default function Sync() {
           sub="timestamp"
         />
       </div>
+
+      {progress && progress.stage === 'error' && error && (
+        <Panel accent="pink" label="Sync error">
+          <div className="text-pink text-xs font-mono">{error}</div>
+        </Panel>
+      )}
 
       {progress && (progress.stage === 'done' || progress.imported > 0 || progress.duplicates > 0) && (
         <Panel accent="green" label="Sync result">

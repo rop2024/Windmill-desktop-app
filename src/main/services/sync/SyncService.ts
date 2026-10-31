@@ -69,7 +69,17 @@ export class SyncService {
 
       const archives = await service.getArchives()
       const settings = await settingsService.get()
-      const lastSyncAt = settings.chessComLastSyncAt ?? null
+      const onlineGames = this.repo.count({ source: 'online' })
+      const hasMatchingSyncCursor = settings.chessComUsername === username && onlineGames > 0
+      const lastSyncAt = hasMatchingSyncCursor ? settings.chessComLastSyncAt ?? null : null
+      if (settings.chessComLastSyncAt !== null && !hasMatchingSyncCursor) {
+        logger.info('Ignoring saved Chess.com sync cursor and performing a recovery scan', {
+          username,
+          savedUsername: settings.chessComUsername || null,
+          onlineGames
+        })
+      }
+      const lastSyncMonth = lastSyncAt ? getTimestampMonthKey(lastSyncAt) : null
 
       const eligibleArchives: string[] = []
       for (const archiveUrl of archives) {
@@ -77,14 +87,11 @@ export class SyncService {
         if (!match) continue
         const year = parseInt(match[1], 10)
         const month = parseInt(match[2], 10)
-        const monthStart = new Date(year, month - 1, 1).getTime()
-        if (lastSyncAt) {
-          const lastSyncDate = new Date(lastSyncAt)
-          const lastSyncMonthStart = new Date(lastSyncDate.getFullYear(), lastSyncDate.getMonth(), 1).getTime()
-          if (monthStart < lastSyncMonthStart) continue
-        }
+        // Re-fetch the month containing the last game so newly added games are seen.
+        if (lastSyncMonth !== null && getArchiveMonthKey(year, month) < lastSyncMonth) continue
         eligibleArchives.push(archiveUrl)
       }
+      eligibleArchives.sort((a, b) => getArchiveUrlMonthKey(b) - getArchiveUrlMonthKey(a))
 
       this.sendProgress?.({
         stage: 'checking',
@@ -119,6 +126,7 @@ export class SyncService {
       let totalDuplicates = 0
       let totalFound = 0
       let processed = 0
+      let failedArchives = 0
       let newestGameTime = lastSyncAt ?? Date.now()
 
       for (const archiveUrl of eligibleArchives) {
@@ -200,6 +208,7 @@ export class SyncService {
 
             const result = this.repo.insertMany(parsed.games)
             if (!result.ok) {
+              failedArchives++
               logger.error(`Sync import failed for ${archiveLabel}`, { error: String(result.error) })
               continue
             }
@@ -207,10 +216,26 @@ export class SyncService {
             totalDuplicates += result.duplicates
           }
         } catch (e) {
+          failedArchives++
           const message = e instanceof Error ? e.message : String(e)
           logger.error(`Sync failed for month ${archiveLabel}`, { username, error: message })
           continue
         }
+      }
+
+      if (failedArchives === eligibleArchives.length && eligibleArchives.length > 0) {
+        const message = 'Chess.com sync failed for every archive. Check your connection and try again.'
+        this.sendProgress?.({
+          stage: 'error',
+          processed,
+          total: eligibleArchives.length,
+          found: totalFound,
+          imported: totalImported,
+          duplicates: totalDuplicates,
+          invalid: 0,
+          username
+        })
+        return { ok: false, error: message }
       }
 
       await settingsService.save({
@@ -246,4 +271,19 @@ function extractMainLineSan(root: MoveNode | null): string[] {
     node = node.children[0] ?? null
   }
   return san
+}
+
+function getTimestampMonthKey(timestamp: number): number {
+  const date = new Date(timestamp)
+  return date.getUTCFullYear() * 12 + date.getUTCMonth()
+}
+
+function getArchiveMonthKey(year: number, month: number): number {
+  return year * 12 + month - 1
+}
+
+function getArchiveUrlMonthKey(archiveUrl: string): number {
+  const match = archiveUrl.match(/\/games\/(\d{4})\/(\d{1,2})\/?$/)
+  if (!match) return Number.MIN_SAFE_INTEGER
+  return getArchiveMonthKey(Number(match[1]), Number(match[2]))
 }
