@@ -28,11 +28,33 @@ type OpeningDetection = {
   ply: number
 }
 
+type SyncProgress = {
+  stage: string
+  processed: number
+  total: number
+  found: number
+  imported: number
+  duplicates: number
+  invalid: number
+  currentMonth?: string | null
+  username?: string | null
+}
+
+type SyncStatus = {
+  username: string | null
+  lastSyncAt: number | null
+  totalGames: number
+  onlineGames: number
+}
+
 type DebugState = {
   importProgress: ImportProgress | null
   importReport: ImportReport | null
   detectedOpenings: OpeningDetection[]
   lastFen: string | null
+  syncProgress: SyncProgress | null
+  syncStatus: SyncStatus | null
+  syncEvents: Array<{ stage: string; currentMonth?: string | null; imported: number; timestamp: number }>
 }
 
 const INITIAL_STATE: DebugState = {
@@ -40,6 +62,9 @@ const INITIAL_STATE: DebugState = {
   importReport: null,
   detectedOpenings: [],
   lastFen: null,
+  syncProgress: null,
+  syncStatus: null,
+  syncEvents: [],
 }
 
 type DebugContextValue = {
@@ -50,6 +75,8 @@ type DebugContextValue = {
   recordImportReport: (r: ImportReport) => void
   recordOpeningDetection: (d: OpeningDetection) => void
   recordLastFen: (fen: string | null) => void
+  recordSyncProgress: (p: SyncProgress) => void
+  recordSyncStatus: (s: SyncStatus) => void
   clear: () => void
 }
 
@@ -84,6 +111,21 @@ export function DebugProvider({ children }: { children: ReactNode }) {
     setState((s) => ({ ...s, lastFen: fen }))
   }, [])
 
+  const recordSyncProgress = useCallback((p: SyncProgress) => {
+    setState((s) => ({
+      ...s,
+      syncProgress: p,
+      syncEvents: [
+        ...s.syncEvents,
+        { stage: p.stage, currentMonth: p.currentMonth ?? null, imported: p.imported, timestamp: Date.now() },
+      ].slice(-100),
+    }))
+  }, [])
+
+  const recordSyncStatus = useCallback((s: SyncStatus) => {
+    setState((prev) => ({ ...prev, syncStatus: s }))
+  }, [])
+
   const clear = useCallback(() => {
     setState(INITIAL_STATE)
   }, [])
@@ -102,6 +144,20 @@ export function DebugProvider({ children }: { children: ReactNode }) {
     return () => unsub?.()
   }, [recordImportProgress])
 
+  // Listen to sync progress events from the main process
+  useEffect(() => {
+    let unsub: (() => void) | undefined
+    try {
+      unsub = window.api.sync.onProgress((progress: unknown) => {
+        const p = progress as SyncProgress
+        recordSyncProgress(p)
+      })
+    } catch {
+      // onProgress may not be available in all environments
+    }
+    return () => unsub?.()
+  }, [recordSyncProgress])
+
   return (
     <DebugContext.Provider value={{
       state,
@@ -111,6 +167,8 @@ export function DebugProvider({ children }: { children: ReactNode }) {
       recordImportReport,
       recordOpeningDetection,
       recordLastFen,
+      recordSyncProgress,
+      recordSyncStatus,
       clear,
     }}>
       {children}

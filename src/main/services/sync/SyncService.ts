@@ -1,8 +1,10 @@
 import { PgnService } from '@pgn/PgnService'
+import { OpeningDetector } from '@openings/OpeningDetector'
 import { GameRepository } from '../database/repositories/GameRepository'
 import { settingsService } from '../settings'
 import { ChessComService, injectSourceHeader } from './ChessComService'
 import { logger } from '../logger'
+import { type MoveNode } from '@pgn/types'
 
 export type SyncProgress = {
   stage: 'checking' | 'fetching' | 'importing' | 'done' | 'idle' | 'error'
@@ -28,11 +30,13 @@ export class SyncService {
   private pgnService: PgnService
   private sendProgress?: (progress: SyncProgress) => void
   private cancelled = false
+  private openingDetector: OpeningDetector | null
 
-  constructor(sendProgress?: (progress: SyncProgress) => void) {
+  constructor(sendProgress?: (progress: SyncProgress) => void, openingDetector: OpeningDetector | null = null) {
     this.repo = new GameRepository()
     this.pgnService = new PgnService()
     this.sendProgress = sendProgress
+    this.openingDetector = openingDetector
   }
 
   cancel(): void {
@@ -169,6 +173,21 @@ export class SyncService {
             const pgnText = gameList.map((g) => injectSourceHeader(g.pgn)).join('\n\n')
             const parsed = this.pgnService.parseGames(pgnText)
 
+            // Detect openings and tag games with ECO/Opening headers
+            if (this.openingDetector) {
+              for (const g of parsed.games) {
+                if (g.root) {
+                  const mainLineSan = extractMainLineSan(g.root)
+                  const match = this.openingDetector.detect(mainLineSan)
+                  if (match) {
+                    g.headers.set('ECO', match.eco)
+                    g.headers.set('Opening', match.name)
+                    if (match.variation) g.headers.set('Variation', match.variation)
+                  }
+                }
+              }
+            }
+
             for (const g of gameList) {
               if (g.end_time && typeof g.end_time === 'number' && g.end_time > newestGameTime / 1000) {
                 newestGameTime = g.end_time * 1000
@@ -213,4 +232,14 @@ export class SyncService {
       return { ok: false, error: message }
     }
   }
+}
+
+function extractMainLineSan(root: MoveNode | null): string[] {
+  const san: string[] = []
+  let node: MoveNode | null = root
+  while (node && node.san) {
+    san.push(node.san)
+    node = node.children[0] ?? null
+  }
+  return san
 }

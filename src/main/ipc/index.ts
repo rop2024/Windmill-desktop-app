@@ -704,11 +704,24 @@ A10\tEnglish Opening\t\t1. c4`
       if (activeSyncService) {
         activeSyncService.cancel()
       }
+      const detector = new OpeningDetector()
+      detector.loadFromTsv(
+        `C00\tKing's Pawn Opening\t\t1. e4
+C20\tKing's Knight Opening\t\t1. e4 e5 2. Nf3
+C50\tGiuoco Piano\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4
+C55\tTwo Knights Defense\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
+C65\tRuy Lopez\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5
+C78\tRuy Lopez Closed\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
+D20\tQueen's Gambit\t\t1. d4 d5 2. c4
+A00\tReti Opening\t\t1. Nf3
+B20\tSicilian Defense\t\t1. e4 c5
+A10\tEnglish Opening\t\t1. c4`
+      )
       const sync = new SyncService((progress: SyncProgress) => {
         if (syncProgressSender) {
           syncProgressSender({ ...progress, username })
         }
-      })
+      }, detector)
       activeSyncService = sync
       try {
         return await sync.sync(username)
