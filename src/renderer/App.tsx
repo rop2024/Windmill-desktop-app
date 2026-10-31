@@ -8,6 +8,7 @@ import Settings from '@renderer/pages/Settings'
 import Sync from '@renderer/pages/Sync'
 import Engine from '@renderer/pages/Engine'
 import GameExplorer from '@renderer/pages/GameExplorer'
+import ExplorerLanding from '@renderer/pages/ExplorerLanding'
 import Analysis from '@renderer/pages/Analysis'
 import Statistics from '@renderer/pages/Statistics'
 import OpeningExplorer from '@renderer/pages/OpeningExplorer'
@@ -100,6 +101,7 @@ export default function App() {
           <Route path="search" element={<Search />} />
           <Route path="repertoire" element={<RepertoireBuilder />} />
           <Route path="graph" element={<KnowledgeGraph />} />
+          <Route path="explorer" element={<ExplorerLanding />} />
           <Route path="explorer/:gameId" element={<GameExplorer />} />
           <Route path="analysis/:gameId" element={<Analysis />} />
         </Route>

@@ -93,9 +93,7 @@ export default function Games() {
     resetImport()
     setImportProgress({ processed: 0, total: 0, imported: 0, duplicates: 0, invalid: 0 })
     try {
-      const pick = await window.api.pgn.importPick()
-      if (!pick.ok || !pick.data?.path) return
-      const report = await window.api.pgn.import(pick.data.path)
+      const report = await window.api.pgn.import()
       if (report.ok) {
         setImportReport(report.data)
         setImportProgress({

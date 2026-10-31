@@ -2,7 +2,7 @@
 
 ## Summary
 
-**PGN Explorer is implemented as the Game Explorer feature** — a "VS Code for PGNs" that loads, browses, and inspects individual games in detail. It is accessible via the `/explorer/:gameId` route and combines a chessboard, move list, FEN viewer, variation tree, comment/annotation support, engine analysis, and opening detection into a single view.
+**PGN Explorer is implemented as the Game Explorer feature** — a "VS Code for PGNs" that loads, browses, and inspects individual games in detail. It is accessible via the `/explorer` landing page and `/explorer/:gameId` game route, and combines a chessboard, move list, FEN viewer, variation tree, comment/annotation support, engine analysis, opening detection, and cross-game search.
 
 This report documents:
 1. What the PGN Explorer system does (per the specification).
@@ -20,9 +20,9 @@ This report documents:
 | FEN viewer | ✅ Implemented | FEN display, edit, load, and copy in the explorer page |
 | Variations support | ✅ Implemented | Variation tree rendered indented in move list; `selectVariation` action |
 | Comments/annotations | ✅ Implemented | Move comments (`{comment}`) and NAGs (`!!`, `!?`, `?!`, `?`) displayed inline; `setComment` action |
-| Search across games | ❌ Not implemented | No cross-game search UI; filtering exists only in Games list |
+| Search across games | ✅ Implemented | Explorer search uses the Search Engine query and opens matching games |
 | Opening detection | ✅ Implemented | ECO/opening name detected via `OpeningDetector` and displayed |
-| Standalone / usable without ecosystem | ⚠️ Partially | Can load any game from `chess.db`, but route is not nested in the `AppLayout` shell (sidebar missing) |
+| Standalone / usable without ecosystem | ✅ Implemented | Sidebar landing page provides PGN import, recent games, and sync/database entry points |
 
 ### Execution flow
 
@@ -51,7 +51,7 @@ PGN text in chess.db  ──►  extractHeaders  ──►  buildTree  ──►
 
 ### A. GameExplorer Page — IMPLEMENTED
 - **File:** `src/renderer/pages/GameExplorer.tsx`
-- **Route:** `/explorer/:gameId` (top-level route in `App.tsx`, NOT nested inside `AppLayout`)
+- **Routes:** `/explorer` landing page and `/explorer/:gameId` individual game view, both nested inside `AppLayout`
 - **Layout:** Two-panel Windmill layout:
   - **Left region** (1/3 width): evaluation strip (green/pink gradient), chessboard, navigation controls (first/prev/next/last), FEN input + Load/Copy buttons, engine analyze/stop button
   - **Right region** (2/3 width): game info panel (result, ECO, opening, date, time control, termination, players), moves panel (WindmillMoveList), engine analysis panel (depth, nodes, NPS, best move, PV)
@@ -105,7 +105,7 @@ PGN text in chess.db  ──►  extractHeaders  ──►  buildTree  ──►
 
 ### F. Opening Detection — IMPLEMENTED
 - **File:** `src/main/services/sync/ChessComService.ts` uses `OpeningDetector` from `@openings/OpeningDetector`
-- **Explorer integration:** `GameExplorer.tsx` instantiates `OpeningDetector`, loads TSV data (ECO codes, opening names, move sequences), detects opening from mainline SAN, displays ECO + name in game info panel
+- **Explorer integration:** `GameExplorer.tsx` uses the shared opening catalogue from `src/openings/defaultOpenings.ts`, detects opening from mainline SAN, and displays ECO + name in game info panel
 - **Sample openings:** King's Pawn, Giuoco Piano, Two Knights, Ruy Lopez, Queen's Gambit, Reti, Sicilian, English
 
 ### F. PGN IPC (Preload API) — IMPLEMENTED
@@ -152,8 +152,8 @@ PGN text in chess.db  ──►  extractHeaders  ──►  buildTree  ──►
 
 | Capability | Status | Notes |
 |---|---|---|
-| Search across games | ❌ Not implemented | No cross-game PGN search; the Games list has a search filter but the Explorer has no "find in games" feature |
-| Standalone / sidebar shell | ⚠️ Partial | Route `/explorer/:gameId` is a top-level route in `App.tsx`, NOT nested inside `AppLayout` — the sidebar/nav rail is missing on explorer pages |
+| Search across games | ✅ Implemented | Explorer search reuses the Search Engine query and links to matching games |
+| Standalone / sidebar shell | ✅ Implemented | `/explorer` provides import/recent games and all explorer routes remain inside `AppLayout` |
 | PGN file drag-and-drop | ❌ Not implemented | PGN import requires file picker dialog; no drag-and-drop target in Explorer |
 | Export current game | ❌ Not implemented | Export exists at Games list level only; Explorer can save edits but not export a single game to file |
 | Board arrows (manual) | ⚠️ Partial | Engine best-move arrows supported; no manual arrow drawing |
@@ -173,4 +173,4 @@ PGN text in chess.db  ──►  extractHeaders  ──►  buildTree  ──►
 6. `analyzeCurrent()` — sends FEN to Stockfish via IPC, displays score/bestmove/PV
 7. `setComment()` + `save()` — edits move comments and serializes the tree back to PGN, persisted via `window.api.pgn.updatePgn()`
 
-**Known issue:** The `/explorer/:gameId` route is not nested inside the `AppLayout` shell (see `App.tsx:74`), so the persistent sidebar, brand, and navigation rail are absent on explorer pages. This should be moved inside the `AppLayout` route group like Dashboard, Games, Settings, Sync, and Statistics.
+The Explorer landing page is the entry point for importing PGN files and opening recent games. Individual game pages also expose the Search Engine query so users can move directly between matching games.

@@ -11,7 +11,8 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', match: (p) => p === '/' },
   { to: '/games', label: 'Games', match: (p) => p.startsWith('/games') },
-  { to: '/openings', label: 'Explorer', match: (p) => p.startsWith('/openings') },
+  { to: '/explorer', label: 'PGN Explorer', match: (p) => p.startsWith('/explorer') },
+  { to: '/openings', label: 'Opening Explorer', match: (p) => p.startsWith('/openings') },
   { to: '/engine', label: 'Analysis', match: (p) => p.startsWith('/engine') },
   { to: '/statistics', label: 'Statistics', match: (p) => p.startsWith('/statistics') },
   { to: '/tactics', label: 'Tactics', match: (p) => p.startsWith('/tactics') },

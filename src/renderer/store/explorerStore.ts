@@ -105,15 +105,14 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
   loadGame: (game) => {
     const { headers, rest } = extractHeaders(game.pgn)
     const { nodes, errors } = buildTree(rest, headers.get('SetUp') === '1' && headers.get('FEN') ? headers.get('FEN')! : DEFAULT_FEN)
-    const first = nodes[0]
     set({
       game,
       headers,
       roots: nodes,
-      currentNodeId: first?.id ?? null,
-      fen: first?.fenAfter ?? DEFAULT_FEN,
-      sanAtCurrent: first?.san ?? null,
-      ply: first?.ply ?? 0,
+      currentNodeId: null,
+      fen: headers.get('SetUp') === '1' && headers.get('FEN') ? headers.get('FEN')! : DEFAULT_FEN,
+      sanAtCurrent: null,
+      ply: 0,
       loading: false,
       error: errors.length > 0 ? errors.join('; ') : null,
       dirty: false
@@ -134,15 +133,12 @@ export const useExplorerStore = create<ExplorerState>((set) => ({
     if (parent) {
       setCurrent(parent)
     } else {
-      const first = roots[0]
-      if (first) setCurrent(first)
+      setStartPosition()
     }
   },
 
   goFirst: () => {
-    const { roots } = useExplorerStore.getState()
-    const first = roots[0]
-    if (first) setCurrent(first)
+    setStartPosition()
   },
 
   goLast: () => {
@@ -275,6 +271,16 @@ function setCurrent(node: MoveNode): void {
     fen: node.fenAfter,
     sanAtCurrent: node.san,
     ply: node.ply
+  })
+}
+
+function setStartPosition(): void {
+  const { headers } = useExplorerStore.getState()
+  useExplorerStore.setState({
+    currentNodeId: null,
+    fen: headers.get('SetUp') === '1' && headers.get('FEN') ? headers.get('FEN')! : DEFAULT_FEN,
+    sanAtCurrent: null,
+    ply: 0
   })
 }
 

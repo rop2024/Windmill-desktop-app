@@ -97,6 +97,10 @@ export function tokenize(movetext: string): PgnToken[] {
     }
 
     const j = scanUntilStructural(movetext, i)
+    if (j === i) {
+      i++
+      continue
+    }
     tokens.push({ type: 'san', value: movetext.slice(i, j) })
     i = j
   }

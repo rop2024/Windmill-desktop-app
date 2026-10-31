@@ -1,11 +1,12 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Chess, validateFen } from 'chess.js'
 import { type MoveNode } from '@pgn/types'
 import { ChessBoard } from '../components/ChessBoard'
 import WindmillMoveList from '../components/WindmillMoveList'
 import { useExplorerStore } from '../store/explorerStore'
-import { OpeningDetector } from '@openings/OpeningDetector'
+import { createDefaultOpeningDetector } from '@openings/defaultOpenings'
+import type { OpeningDetector } from '@openings/OpeningDetector'
 import { Panel } from '../components/ui/Panel'
 
 type GameInfo = {
@@ -31,8 +32,17 @@ type AnalysisUpdate = {
   time: number
 }
 
+type ExplorerSearchResult = {
+  id: string
+  whitePlayer: string
+  blackPlayer: string
+  result: string
+  outcome: string | null
+}
+
 export default function GameExplorer() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
 
   const {
     game,
@@ -62,6 +72,10 @@ export default function GameExplorer() {
   const [openingInfo, setOpeningInfo] = useState<{ eco: string; name: string } | null>(null)
   const [flipped, setFlipped] = useState(false)
   const [showSaveToast, setShowSaveToast] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<ExplorerSearchResult[]>([])
+  const [searching, setSearching] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   const openingDetectorRef = useRef<OpeningDetector | null>(null)
 
@@ -69,10 +83,13 @@ export default function GameExplorer() {
     if (!id) return
     let cancelled = false
     const fetchGame = async () => {
+      useExplorerStore.setState({ loading: true, error: null, game: null, roots: [] })
       const result = await window.api.games.getById(id)
       if (!cancelled && result.ok && result.data) {
         loadGame(result.data)
         detectOpening()
+      } else if (!cancelled) {
+        useExplorerStore.setState({ loading: false, error: result.ok ? 'Game not found.' : result.error.message })
       }
     }
     fetchGame()
@@ -129,19 +146,7 @@ export default function GameExplorer() {
   }, [currentNodeId, roots])
 
   const detectOpening = () => {
-    const detector = new OpeningDetector()
-    detector.loadFromTsv(
-      `C00\tKing's Pawn Opening\t\t1. e4
-C20\tKing's Knight Opening\t\t1. e4 e5 2. Nf3
-C50\tGiuoco Piano\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4
-C55\tTwo Knights Defense\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
-C65\tRuy Lopez\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5
-C78\tRuy Lopez Closed\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
-D20\tQueen's Gambit\t\t1. d4 d5 2. c4
-A00\tReti Opening\t\t1. Nf3
-B20\tSicilian Defense\t\t1. e4 c5
-A10\tEnglish Opening\t\t1. c4`
-    )
+    const detector = createDefaultOpeningDetector()
     openingDetectorRef.current = detector
     if (currentNodeId) {
       const mainline = getMainlineSan(roots, currentNodeId)
@@ -271,6 +276,21 @@ A10\tEnglish Opening\t\t1. c4`
     }
   }
 
+  const runSearch = async () => {
+    if (!searchQuery.trim()) return
+    setSearching(true)
+    setSearchError(null)
+    try {
+      const result = await window.api.search.query(searchQuery.trim(), 8, 0)
+      if (result.ok) setSearchResults(result.data.results)
+      else setSearchError(result.error?.message ?? 'Search failed')
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSearching(false)
+    }
+  }
+
   const info: GameInfo = useMemo(() => {
     if (!game) return emptyInfo()
     return {
@@ -321,7 +341,7 @@ A10\tEnglish Opening\t\t1. c4`
           <div className="flex items-end gap-2 min-h-[560px]">
             <div className="w-2 h-[500px] bg-track rounded-none relative">
               <div
-                className="h-full bg-[accent] relative"
+                className="h-full relative"
                 style={{
                   width: '100%',
                   height: `${evalWidth}%`,
@@ -441,6 +461,41 @@ A10\tEnglish Opening\t\t1. c4`
 
         {/* Right region: game info, moves, engine analysis, eval graph */}
         <div className="flex-1 overflow-y-auto min-w-0 p-6">
+          <Panel accent="cyan" label="Search games" className="mb-4">
+            <div className="flex gap-2">
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') runSearch()
+                }}
+                placeholder="Search games…"
+                className="flex-1 bg-panel border border-border px-3 py-2 text-xs font-mono text-text-primary focus:border-cyan focus:outline-none"
+              />
+              <button
+                onClick={runSearch}
+                disabled={searching || !searchQuery.trim()}
+                className="bg-transparent border border-cyan px-3 py-2 text-xs font-mono text-cyan uppercase hover:bg-cyan/10 disabled:opacity-50"
+              >
+                {searching ? 'Searching…' : 'Search'}
+              </button>
+            </div>
+            {searchError && <div className="mt-2 text-xs font-mono text-pink">{searchError}</div>}
+            {searchResults.length > 0 && (
+              <div className="mt-2 divide-y divide-border/50">
+                {searchResults.map((result) => (
+                  <button
+                    key={result.id}
+                    onClick={() => navigate(`/explorer/${result.id}`)}
+                    className="w-full flex justify-between gap-2 py-2 text-left text-xs font-mono text-text-primary hover:text-cyan"
+                  >
+                    <span>{result.whitePlayer} vs {result.blackPlayer}</span>
+                    <span className="text-text-muted">{result.outcome ?? result.result}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </Panel>
           <Panel accent="magenta" label="Game info" className="mb-4">
             <dl className="space-y-2 text-sm">
               <div className="flex justify-between">

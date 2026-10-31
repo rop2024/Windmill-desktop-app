@@ -36,7 +36,7 @@ function binaryPath(): string {
     const arch = process.arch === 'arm64' ? 'arm64' : 'x64'
     return join(process.resourcesPath, 'stockfish', `${process.platform}-${arch}`, BINARY_NAME)
   }
-  return join(__dirname, '..', '..', '..', 'resources', 'stockfish', `${process.platform}-${process.arch}`, BINARY_NAME)
+  return join(__dirname, '..', '..', 'resources', 'stockfish', `${process.platform}-${process.arch}`, BINARY_NAME)
 }
 
 export class EngineProcess extends EventEmitter {

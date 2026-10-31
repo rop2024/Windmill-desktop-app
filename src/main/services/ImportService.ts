@@ -24,6 +24,7 @@ export type ImportReport = {
 }
 
 const CHUNK_SIZE = 200
+const MAX_FILE_SIZE = 25 * 1024 * 1024
 
 export class ImportService {
   private repo: GameRepository
@@ -42,6 +43,9 @@ export class ImportService {
     let text: string
     try {
       const buf = await readFile(filePath)
+      if (buf.byteLength > MAX_FILE_SIZE) {
+        throw new Error('PGN file exceeds the 25 MB limit')
+      }
       text = Buffer.from(buf).toString('utf8')
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)

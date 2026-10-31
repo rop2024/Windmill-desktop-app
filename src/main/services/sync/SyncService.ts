@@ -30,6 +30,7 @@ export class SyncService {
   private pgnService: PgnService
   private sendProgress?: (progress: SyncProgress) => void
   private cancelled = false
+  private abortController: AbortController | null = null
   private openingDetector: OpeningDetector | null
 
   constructor(sendProgress?: (progress: SyncProgress) => void, openingDetector: OpeningDetector | null = null) {
@@ -41,6 +42,7 @@ export class SyncService {
 
   cancel(): void {
     this.cancelled = true
+    this.abortController?.abort()
   }
 
   async status(): Promise<SyncStatus> {
@@ -62,7 +64,8 @@ export class SyncService {
     found: number
   } | { ok: false; error: string }> {
     this.cancelled = false
-    const service = new ChessComService(username)
+    this.abortController = new AbortController()
+    const service = new ChessComService(username, this.abortController.signal)
 
     try {
       await service.getPlayer()
@@ -105,10 +108,6 @@ export class SyncService {
       })
 
       if (eligibleArchives.length === 0) {
-        await settingsService.save({
-          chessComUsername: username,
-          chessComLastSyncAt: Date.now()
-        })
         this.sendProgress?.({
           stage: 'done',
           processed: 0,
@@ -127,7 +126,8 @@ export class SyncService {
       let totalFound = 0
       let processed = 0
       let failedArchives = 0
-      let newestGameTime = lastSyncAt ?? Date.now()
+      let newestGameTime = lastSyncAt ?? 0
+      let totalInvalid = 0
 
       for (const archiveUrl of eligibleArchives) {
         if (this.cancelled) {
@@ -138,7 +138,7 @@ export class SyncService {
             found: totalFound,
             imported: totalImported,
             duplicates: totalDuplicates,
-            invalid: 0,
+            invalid: totalInvalid,
             username
           })
           return { ok: false, error: 'Sync cancelled' }
@@ -160,7 +160,7 @@ export class SyncService {
             found: totalFound,
             imported: totalImported,
             duplicates: totalDuplicates,
-            invalid: 0,
+            invalid: totalInvalid,
             currentMonth: archiveLabel,
             username
           })
@@ -177,43 +177,41 @@ export class SyncService {
               found: totalFound,
               imported: totalImported,
               duplicates: totalDuplicates,
-              invalid: 0,
+              invalid: totalInvalid,
               currentMonth: archiveLabel,
               username
             })
 
-            const pgnText = gameList.map((g) => injectSourceHeader(g.pgn)).join('\n\n')
-            const parsed = this.pgnService.parseGames(pgnText)
-
-            // Detect openings and tag games with ECO/Opening headers
-            if (this.openingDetector) {
-              for (const g of parsed.games) {
-                if (g.root) {
-                  const mainLineSan = extractMainLineSan(g.root)
-                  const match = this.openingDetector.detect(mainLineSan)
+            let archiveNewestGameTime = newestGameTime
+            for (const onlineGame of gameList) {
+              try {
+                const parsed = this.pgnService.parseGames(injectSourceHeader(onlineGame.pgn))
+                const game = parsed.games[0]
+                if (!game || game.error) {
+                  totalInvalid++
+                  continue
+                }
+                if (this.openingDetector && game.root) {
+                  const match = this.openingDetector.detect(extractMainLineSan(game.root))
                   if (match) {
-                    g.headers.set('ECO', match.eco)
-                    g.headers.set('Opening', match.name)
-                    if (match.variation) g.headers.set('Variation', match.variation)
+                    game.headers.set('ECO', match.eco)
+                    game.headers.set('Opening', match.name)
+                    if (match.variation) game.headers.set('Variation', match.variation)
                   }
                 }
+                const result = this.repo.insertGame(game)
+                if (!result.ok) throw new Error(String(result.error))
+                if (result.duplicate) totalDuplicates++
+                else totalImported++
+                if (onlineGame.end_time > archiveNewestGameTime / 1000) {
+                  archiveNewestGameTime = onlineGame.end_time * 1000
+                }
+              } catch (e) {
+                totalInvalid++
+                logger.warn('Invalid Chess.com game skipped', { archiveLabel, error: String(e) })
               }
             }
-
-            for (const g of gameList) {
-              if (g.end_time && typeof g.end_time === 'number' && g.end_time > newestGameTime / 1000) {
-                newestGameTime = g.end_time * 1000
-              }
-            }
-
-            const result = this.repo.insertMany(parsed.games)
-            if (!result.ok) {
-              failedArchives++
-              logger.error(`Sync import failed for ${archiveLabel}`, { error: String(result.error) })
-              continue
-            }
-            totalImported += result.imported
-            totalDuplicates += result.duplicates
+            newestGameTime = archiveNewestGameTime
           }
         } catch (e) {
           failedArchives++
@@ -232,16 +230,18 @@ export class SyncService {
           found: totalFound,
           imported: totalImported,
           duplicates: totalDuplicates,
-          invalid: 0,
+          invalid: totalInvalid,
           username
         })
         return { ok: false, error: message }
       }
 
-      await settingsService.save({
-        chessComUsername: username,
-        chessComLastSyncAt: newestGameTime
-      })
+      if (failedArchives === 0 && newestGameTime > 0) {
+        await settingsService.save({
+          chessComUsername: username,
+          chessComLastSyncAt: newestGameTime
+        })
+      }
 
       this.sendProgress?.({
         stage: 'done',
@@ -250,7 +250,7 @@ export class SyncService {
         found: totalFound,
         imported: totalImported,
         duplicates: totalDuplicates,
-        invalid: 0,
+        invalid: totalInvalid,
         username
       })
 
@@ -259,6 +259,8 @@ export class SyncService {
       const message = e instanceof Error ? e.message : String(e)
       logger.error('SyncService.sync failed', { username, error: message })
       return { ok: false, error: message }
+    } finally {
+      this.abortController = null
     }
   }
 }

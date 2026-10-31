@@ -13,8 +13,7 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('games.update', { id, ...patch })
   },
   pgn: {
-    import: (filePath: string) => ipcRenderer.invoke('pgn.import', { filePath }),
-    importPick: () => ipcRenderer.invoke('pgn.import.pick', {}),
+    import: () => ipcRenderer.invoke('pgn.import', {}),
     export: (ids?: string[], all?: boolean) => ipcRenderer.invoke('pgn.export', { ids, all }),
     exportAll: () => ipcRenderer.invoke('pgn.export.all', {}),
     updatePgn: (id: string, pgn: string) => ipcRenderer.invoke('games.updatePgn', { id, pgn })
@@ -60,8 +59,8 @@ contextBridge.exposeInMainWorld('api', {
     }) => ipcRenderer.invoke('settings.set', patch)
   },
   database: {
-    backup: (filePath: string) => ipcRenderer.invoke('database.backup', { filePath }),
-    restore: (filePath: string) => ipcRenderer.invoke('database.restore', { filePath })
+    backup: () => ipcRenderer.invoke('database.backup', {}),
+    restore: () => ipcRenderer.invoke('database.restore', {})
   },
   statistics: {
     overview: (filters?: GameFilters) => ipcRenderer.invoke('statistics.overview', filters),

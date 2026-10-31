@@ -109,7 +109,7 @@ export default function Dashboard() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <PrimaryButton onClick={() => window.api.pgn.importPick().catch(() => {})}>
+          <PrimaryButton onClick={() => window.api.pgn.import().catch(() => {})}>
             SYNC NOW
           </PrimaryButton>
         </div>

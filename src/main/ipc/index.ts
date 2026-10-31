@@ -1,4 +1,5 @@
 import { ipcMain, app, dialog, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import Database from 'better-sqlite3'
 import { z } from 'zod'
 import { err, isResult, ok, type Result } from '@shared/result'
 import { logger } from '@main/services/logger'
@@ -12,7 +13,7 @@ import { analysisQueue, type GameAnalysisResult } from '@main/services/stockfish
 import { settingsService, type AppSettings } from '@main/services/settings'
 import { statisticsService } from '@main/services/statistics/StatisticsService'
 import { openingExplorerService } from '@main/services/statistics/OpeningExplorerService'
-import { OpeningDetector } from '@openings/OpeningDetector'
+import { createDefaultOpeningDetector } from '@openings/defaultOpenings'
 import { timelineService } from '@main/services/statistics/TimelineService'
 import { tacticalDetector } from '@main/services/analysis/TacticalDetector'
 import { weaknessEngine } from '@main/services/analysis/WeaknessEngine'
@@ -30,6 +31,7 @@ import { knowledgeGraph } from '@main/services/analysis/KnowledgeGraph'
 import { achievementEngine } from '@main/services/gamification/AchievementEngine'
 import { runMigrations } from '@main/services/database/migrator'
 import { SyncService, type SyncProgress } from '@main/services/sync/SyncService'
+import { PgnService } from '@pgn/PgnService'
 import type { GameFilters, GameSource, GameResult, GameOutcome } from '@shared/game'
 
 export type HandlerFn<Args, R> = (
@@ -147,7 +149,7 @@ export function registerHandlers(): void {
     'games.query',
     z.object({
       source: z.string().optional(),
-      result: z.string().optional(),
+      result: z.enum(['win', 'loss', 'draw']).optional(),
       outcome: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).max(1000).optional(),
@@ -194,8 +196,8 @@ export function registerHandlers(): void {
     z.object({
       id: z.string(),
       result: z.string().optional(),
-      pgn: z.string().optional(),
-      source: z.string().optional()
+      pgn: z.string().max(5_000_000).optional(),
+      source: z.enum(['local', 'online', 'engine']).optional()
     }),
     async (_event, { id, ...patch }) => {
       const result = repo.update(id, patch as Parameters<typeof repo.update>[1])
@@ -206,40 +208,20 @@ export function registerHandlers(): void {
 
   handle(
     'pgn.import',
-    z.object({ filePath: z.string() }),
-    async (_event, { filePath }) => {
-      const detector = new OpeningDetector()
-      detector.loadFromTsv(
-        `C00\tKing's Pawn Opening\t\t1. e4
-C20\tKing's Knight Opening\t\t1. e4 e5 2. Nf3
-C50\tGiuoco Piano\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4
-C55\tTwo Knights Defense\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
-C65\tRuy Lopez\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5
-C78\tRuy Lopez Closed\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
-D20\tQueen's Gambit\t\t1. d4 d5 2. c4
-A00\tReti Opening\t\t1. Nf3
-B20\tSicilian Defense\t\t1. e4 c5
-A10\tEnglish Opening\t\t1. c4`
-      )
-      const service = new ImportService(emitProgress, detector)
-      const report = await service.importFile(filePath)
-      return { ok: true, data: report }
-    }
-  )
-
-  handle(
-    'pgn.import.pick',
     z.object({}),
     async () => {
-      const result = await dialog.showOpenDialog({
+      const selected = await dialog.showOpenDialog({
         title: 'Import PGN',
         filters: [{ name: 'PGN', extensions: ['pgn', 'txt'] }],
         properties: ['openFile']
       })
-      if (result.canceled || result.filePaths.length === 0) {
+      if (selected.canceled || selected.filePaths.length === 0) {
         return { ok: true, data: null }
       }
-      return { ok: true, data: result.filePaths[0] }
+      const detector = createDefaultOpeningDetector()
+      const service = new ImportService(emitProgress, detector)
+      const report = await service.importFile(selected.filePaths[0])
+      return { ok: true, data: report }
     }
   )
 
@@ -262,6 +244,13 @@ A10\tEnglish Opening\t\t1. c4`
     'games.updatePgn',
     z.object({ id: z.string(), pgn: z.string() }),
     async (_event, { id, pgn }) => {
+      if (pgn.length > 5_000_000) {
+        return err('PGN_INVALID', 'PGN exceeds the 5 MB limit')
+      }
+      const parsed = new PgnService().parseGames(pgn)
+      if (parsed.games.length === 0 || parsed.errors.length > 0 || parsed.games.some((game) => game.error)) {
+        return err('PGN_INVALID', 'PGN is invalid')
+      }
       const result = repo.update(id, { pgn })
       if (!result.ok) return result
       return { ok: true, data: result.game }
@@ -338,8 +327,15 @@ A10\tEnglish Opening\t\t1. c4`
 
   handle(
     'database.backup',
-    z.object({ filePath: z.string() }),
-    async (_event, { filePath }) => {
+    z.object({}),
+    async () => {
+      const selected = await dialog.showSaveDialog({
+        title: 'Backup Database',
+        defaultPath: 'chess-backup.db',
+        filters: [{ name: 'SQLite', extensions: ['db'] }]
+      })
+      if (selected.canceled || !selected.filePath) return { ok: true, data: null }
+      const filePath = selected.filePath
       const db = getDB()
       db.backup(filePath)
       logger.info('Database backup created', { path: filePath })
@@ -349,29 +345,39 @@ A10\tEnglish Opening\t\t1. c4`
 
   handle(
     'database.restore',
-    z.object({ filePath: z.string() }),
-    async (_event, { filePath }) => {
+    z.object({}),
+    async () => {
       const fs = await import('node:fs/promises')
-      const { existsSync } = await import('node:fs')
-      if (!existsSync(filePath)) {
-        return err('FILE_READ_FAILED', `Backup file not found: ${filePath}`)
-      }
-      // Validate it's a SQLite DB by checking header
-      const header = Buffer.alloc(16)
-      const fd = await fs.open(filePath, 'r')
+      const selected = await dialog.showOpenDialog({
+        title: 'Restore Database',
+        filters: [{ name: 'SQLite', extensions: ['db'] }],
+        properties: ['openFile']
+      })
+      if (selected.canceled || selected.filePaths.length === 0) return { ok: true, data: null }
+      const filePath = selected.filePaths[0]
+      let candidate: Database.Database | null = null
       try {
-        await fd.read(header, 0, 16, 0)
-        const magic = header.toString('ascii', 0, 16)
-        if (!magic.startsWith('SQLite format 3')) {
-          return err('FILE_READ_FAILED', 'File is not a valid SQLite database')
+        candidate = new Database(filePath, { readonly: true, fileMustExist: true })
+        const integrity = candidate.pragma('integrity_check', { simple: true })
+        const quick = candidate.pragma('quick_check', { simple: true })
+        const migrations = candidate.prepare(
+          "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'schema_migrations'"
+        ).get()
+        if (integrity !== 'ok' || quick !== 'ok' || !migrations) {
+          return err('FILE_READ_FAILED', 'Backup failed SQLite integrity or schema validation')
         }
+      } catch (e) {
+        return err('FILE_READ_FAILED', `Unable to validate database: ${e instanceof Error ? e.message : String(e)}`)
       } finally {
-        await fd.close()
+        candidate?.close()
       }
-      // Close current connection, replace file, reopen
+      const dbPath = getDBPath()
+      const tempPath = `${dbPath}.restore-${crypto.randomUUID()}.tmp`
       await closeDB()
-      await fs.copyFile(filePath, getDBPath())
-      // Re-initialize
+      await fs.copyFile(dbPath, `${dbPath}.before-restore`)
+      await fs.copyFile(filePath, tempPath)
+      await fs.copyFile(tempPath, dbPath)
+      await fs.unlink(tempPath)
       await initDB()
       await runMigrations()
       logger.info('Database restored from backup', { path: filePath })
@@ -698,25 +704,13 @@ A10\tEnglish Opening\t\t1. c4`
   handle(
     'sync.start',
     z.object({
-      username: z.string().min(1, 'Username required')
+      username: z.string().regex(/^[A-Za-z0-9_-]{3,25}$/, 'Username must be 3-25 letters, numbers, underscores, or hyphens')
     }),
     async (_event, { username }) => {
       if (activeSyncService) {
         activeSyncService.cancel()
       }
-      const detector = new OpeningDetector()
-      detector.loadFromTsv(
-        `C00\tKing's Pawn Opening\t\t1. e4
-C20\tKing's Knight Opening\t\t1. e4 e5 2. Nf3
-C50\tGiuoco Piano\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4
-C55\tTwo Knights Defense\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
-C65\tRuy Lopez\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5
-C78\tRuy Lopez Closed\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
-D20\tQueen's Gambit\t\t1. d4 d5 2. c4
-A00\tReti Opening\t\t1. Nf3
-B20\tSicilian Defense\t\t1. e4 c5
-A10\tEnglish Opening\t\t1. c4`
-      )
+      const detector = createDefaultOpeningDetector()
       const sync = new SyncService((progress: SyncProgress) => {
         if (syncProgressSender) {
           syncProgressSender({ ...progress, username })

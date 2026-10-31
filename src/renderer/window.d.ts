@@ -585,14 +585,13 @@ declare global {
         update: (id: string, patch: { result?: string; pgn?: string; source?: string }) => Promise<Result<Game>>
       }
       pgn: {
-        import: (filePath: string) => Promise<Result<{
+        import: () => Promise<Result<{
           found: number
           imported: number
           duplicates: number
           invalid: number
           errors: Array<{ gameIndex: number; message: string }>
-        }>>
-        importPick: () => Promise<Result<{ path: string | null }>>
+        } | null>>
         export: (ids?: string[], all?: boolean) => Promise<Result<{ path: string; count: number }>>
         updatePgn: (id: string, pgn: string) => Promise<Result<Game>>
       }
@@ -625,8 +624,8 @@ declare global {
         set: (patch: Partial<AppSettings>) => Promise<Result<unknown>>
       }
       database: {
-        backup: (filePath: string) => Promise<Result<{ path: string }>>
-        restore: (filePath: string) => Promise<Result<{ path: string }>>
+        backup: () => Promise<Result<{ path: string } | null>>
+        restore: () => Promise<Result<{ path: string } | null>>
       }
       statistics: {
         overview: (filters?: GameFilters) => Promise<Result<OverviewStats>>

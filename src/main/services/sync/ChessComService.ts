@@ -39,27 +39,32 @@ export type ChessComPlayer = {
   avatar: string | null
 }
 
-function fetchWithTimeout(url: string, timeoutMs = 30000): Promise<Response> {
+function fetchWithTimeout(url: string, timeoutMs = 30000, signal?: AbortSignal): Promise<Response> {
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), timeoutMs)
+  const abort = () => controller.abort()
+  signal?.addEventListener('abort', abort, { once: true })
   return fetch(url, {
     headers: {
       'User-Agent': 'ChessDesktop/1.0.1 (chess desktop application)'
     },
     signal: controller.signal
-  }).finally(() => clearTimeout(timeout))
+  }).finally(() => {
+    clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
+  })
 }
 
 export class ChessComService {
   private username: string
 
-  constructor(username: string) {
+  constructor(username: string, private readonly signal?: AbortSignal) {
     this.username = username
   }
 
   private async request<T>(path: string): Promise<T> {
     const url = `${BASE_URL}${path}`
-    const res = await fetchWithTimeout(url)
+    const res = await fetchWithTimeout(url, 30000, this.signal)
     if (!res.ok) {
       if (res.status === 404) {
         throw new Error(`Chess.com player not found: ${this.username}`)
@@ -73,19 +78,19 @@ export class ChessComService {
   }
 
   async getPlayer(): Promise<ChessComPlayer> {
-    return this.request<ChessComPlayer>(`/player/${this.username}`)
+    return this.request<ChessComPlayer>(`/player/${encodeURIComponent(this.username)}`)
   }
 
   async getArchives(): Promise<string[]> {
     const data = await this.request<ChessComArchives>(
-      `/player/${this.username}/games/archives`
+      `/player/${encodeURIComponent(this.username)}/games/archives`
     )
     return Array.isArray(data.archives) ? data.archives : []
   }
 
   async getGamesForMonth(year: number, month: number): Promise<ChessComGame[]> {
     const data = await this.request<{ games: ChessComGame[] }>(
-      `/player/${this.username}/games/${year}/${String(month).padStart(2, '0')}`
+      `/player/${encodeURIComponent(this.username)}/games/${year}/${String(month).padStart(2, '0')}`
     )
     return Array.isArray(data.games) ? data.games : []
   }

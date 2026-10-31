@@ -30,7 +30,7 @@ const menuTemplate: MenuItemConstructorOptions[] = [
             properties: ['openFile']
           })
           if (!result.canceled && result.filePaths.length > 0) {
-            mainWindow?.webContents.send('menu.import-pgn', result.filePaths[0])
+            mainWindow?.webContents.send('menu.import-pgn')
           }
         }
       },
@@ -58,7 +58,7 @@ const menuTemplate: MenuItemConstructorOptions[] = [
             filters: [{ name: 'SQLite', extensions: ['db'] }]
           })
           if (!result.canceled && result.filePath) {
-            mainWindow?.webContents.send('menu.backup-db', result.filePath)
+            mainWindow?.webContents.send('menu.backup-db')
           }
         }
       },
@@ -71,7 +71,7 @@ const menuTemplate: MenuItemConstructorOptions[] = [
             properties: ['openFile']
           })
           if (!result.canceled && result.filePaths.length > 0) {
-            mainWindow?.webContents.send('menu.restore-db', result.filePaths[0])
+            mainWindow?.webContents.send('menu.restore-db')
           }
         }
       }
@@ -141,13 +141,28 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'))
   }
 
+  if (!app.isPackaged) {
+    mainWindow.webContents.openDevTools({ mode: 'detach' })
+    mainWindow.webContents.on('before-input-event', (event, input) => {
+      if (input.control && input.shift && input.key.toLowerCase() === 'i') {
+        event.preventDefault()
+        mainWindow?.webContents.toggleDevTools()
+      }
+    })
+  }
+
   mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+  mainWindow.webContents.on('will-navigate', (event) => {
+    event.preventDefault()
+  })
   mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription, validatedURL) => {
     console.error('Renderer failed to load', { errorCode, errorDescription, validatedURL })
   })
-  mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
-    console.log('Renderer console', { level, message, line, sourceId })
-  })
+  if (!app.isPackaged) {
+    mainWindow.webContents.on('console-message', (_event, level, message, line, sourceId) => {
+      console.log('Renderer console', { level, message, line, sourceId })
+    })
+  }
 
   mainWindow.on('closed', () => {
     mainWindow = null

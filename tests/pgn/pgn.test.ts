@@ -69,6 +69,10 @@ describe('parseHeaders', () => {
 })
 
 describe('tokenize', () => {
+  it('does not loop on a structural character at token start', () => {
+    expect(tokenize(')')).toEqual([{ type: 'rparen', value: ')' }])
+  })
+
   it('tokenizes movetext with comments, variations, NAGs, result', () => {
     const tokens = tokenize(`1. e4 {good move} e5!$ (2. Nf3) 1-0`)
     const types = tokens.map((t) => t.type)
