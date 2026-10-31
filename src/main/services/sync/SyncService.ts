@@ -78,7 +78,11 @@ export class SyncService {
         const year = parseInt(match[1], 10)
         const month = parseInt(match[2], 10)
         const monthStart = new Date(year, month - 1, 1).getTime()
-        if (lastSyncAt && monthStart <= lastSyncAt) continue
+        if (lastSyncAt) {
+          const lastSyncDate = new Date(lastSyncAt)
+          const lastSyncMonthStart = new Date(lastSyncDate.getFullYear(), lastSyncDate.getMonth(), 1).getTime()
+          if (monthStart < lastSyncMonthStart) continue
+        }
         eligibleArchives.push(archiveUrl)
       }
 
