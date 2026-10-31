@@ -85,14 +85,17 @@ export default function OpeningExplorer() {
   const [loading, setLoading] = useState(true)
   const [openings, setOpenings] = useState<OpeningStat[]>([])
   const [drilldown, setDrilldown] = useState<OpeningDrilldown | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const loadList = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const result = await window.api.openings.list()
       if (result.ok) setOpenings(result.data)
+      else setError(result.error?.message ?? 'Failed to load openings')
     } catch {
-      // ignore
+      setError('Failed to load openings')
     } finally {
       setLoading(false)
     }
@@ -100,11 +103,13 @@ export default function OpeningExplorer() {
 
   const loadDrilldown = useCallback(async (name: string) => {
     setLoading(true)
+    setError(null)
     try {
       const result = await window.api.openings.drilldown(decodeURIComponent(name))
       if (result.ok) setDrilldown(result.data)
+      else setError(result.error?.message ?? 'Failed to load opening')
     } catch {
-      // ignore
+      setError('Failed to load opening')
     } finally {
       setLoading(false)
     }
@@ -133,6 +138,16 @@ export default function OpeningExplorer() {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
         Loading opening explorer…
+      </div>
+    )
+  }
+
+  if (!opening && error) {
+    return (
+      <div className="bg-background min-h-screen space-y-4">
+        <Panel accent="pink">
+          <span className="text-xs font-mono text-pink">{error}</span>
+        </Panel>
       </div>
     )
   }
@@ -227,7 +242,29 @@ export default function OpeningExplorer() {
     )
   }
 
-  const d = drilldown!
+  const d = drilldown
+  if (!d) {
+    return (
+      <div className="bg-background min-h-screen space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <button
+              onClick={() => navigate('/openings')}
+              className="bg-transparent border border-border font-mono text-filter uppercase text-xs px-3 py-2 rounded-none hover:border-cyan transition-colors"
+            >
+              &lt; Back to openings
+            </button>
+            <h1 className="text-page-title font-sans font-bold uppercase text-text-primary">
+              Opening not found
+            </h1>
+          </div>
+        </div>
+        <Panel accent="pink">
+          <span className="text-xs font-mono text-pink">Opening data not available.</span>
+        </Panel>
+      </div>
+    )
+  }
   const summary = d.summary
 
   return (

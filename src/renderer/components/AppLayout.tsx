@@ -1,4 +1,6 @@
 import { Outlet, useLocation, useNavigate, Link } from 'react-router-dom'
+import { useDebug } from '../context/DebugContext'
+import { DebugPanel } from '../components/debug/DebugPanel'
 
 type NavItem = {
   to: string
@@ -9,10 +11,9 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Dashboard', match: (p) => p === '/' },
   { to: '/games', label: 'Games', match: (p) => p.startsWith('/games') },
-  { to: '/games', label: 'Explorer', match: (p) => p.startsWith('/games') },
+  { to: '/openings', label: 'Explorer', match: (p) => p.startsWith('/openings') },
   { to: '/engine', label: 'Analysis', match: (p) => p.startsWith('/engine') },
   { to: '/statistics', label: 'Statistics', match: (p) => p.startsWith('/statistics') },
-  { to: '/openings', label: 'Openings', match: (p) => p.startsWith('/openings') },
   { to: '/tactics', label: 'Tactics', match: (p) => p.startsWith('/tactics') },
   { to: '/weaknesses', label: 'Weaknesses', match: (p) => p.startsWith('/weaknesses') },
   { to: '/trainer', label: 'Trainer', match: (p) => p.startsWith('/trainer') },
@@ -33,6 +34,7 @@ const NAV_ITEMS: NavItem[] = [
 export default function AppLayout() {
   const location = useLocation()
   const navigate = useNavigate()
+  const { visible, setVisible } = useDebug()
 
   return (
     <div className="min-h-screen bg-background bg-scanline flex flex-col">
@@ -59,8 +61,8 @@ export default function AppLayout() {
                       ? 'bg-panel border-l-3 border-yellow text-yellow'
                       : 'text-text-muted hover:text-cyan hover:border-cyan border-transparent border-l-3',
                     ]
-                    .filter(Boolean)
-                    .join(' ')}
+                      .filter(Boolean)
+                      .join(' ')}
                 >
                   {item.label}
                 </Link>
@@ -78,6 +80,18 @@ export default function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      {/* Debug toggle button (bottom right corner) */}
+        <button
+          onClick={() => setVisible(!visible)}
+        className="fixed bottom-4 right-4 z-50 bg-panel border border-border rounded-none px-3 py-2 text-[10px] font-mono text-text-muted hover:bg-white/5 hover:border-cyan transition-colors"
+        title="Toggle debug panel"
+      >
+        🐛 Debug
+      </button>
+
+      {/* Debug panel */}
+      {visible && <DebugPanel visible={visible} onClose={() => setVisible(false)} />}
     </div>
   )
 }

@@ -5,14 +5,17 @@ import './index.css'
 import { ErrorBoundary } from './components/ui/ErrorBoundary'
 import { ThemeProvider } from './context/ThemeContext'
 import { BoardThemeProvider } from './context/BoardThemeContext'
+import { DebugProvider } from './context/DebugContext'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider initialTheme="system">
       <BoardThemeProvider>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
+        <DebugProvider>
+          <ErrorBoundary>
+            <App />
+          </ErrorBoundary>
+        </DebugProvider>
       </BoardThemeProvider>
     </ThemeProvider>
   </React.StrictMode>

@@ -36,6 +36,7 @@ export default function Games() {
   const tableRef = useRef<HTMLDivElement>(null)
   const rowRefs = useRef<HTMLTableRowElement[]>([])
   const progressUnsubscribe = useRef<(() => void) | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const offset = (page - 1) * pageSize
 
@@ -58,11 +59,16 @@ export default function Games() {
 
   const fetchGames = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
       const result = await window.api.games.query(filters, pageSize, offset)
       if (result.ok) {
         setGames(result.data.games, result.data.total)
+      } else {
+        setError(result.error?.message ?? 'Failed to load games')
       }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -126,8 +132,8 @@ export default function Games() {
     navigate(`/explorer/${game.id}`)
   }
 
-  const resultAccent = (result: string): 'green' | 'pink' | 'orange' | 'cyan' => {
-    switch (result.toLowerCase()) {
+  const resultAccent = (outcome: string): 'green' | 'pink' | 'orange' | 'cyan' => {
+    switch (outcome.toLowerCase()) {
       case 'win': return 'green'
       case 'loss': return 'pink'
       case 'draw': return 'orange'
@@ -158,8 +164,8 @@ export default function Games() {
         {RESULT_OPTIONS.map((r) => (
           <FilterChip
             key={r}
-            selected={filters.result === r}
-            onClick={() => setFilters({ result: filters.result === r ? undefined : r })}
+            selected={filters.outcome === r}
+            onClick={() => setFilters({ outcome: filters.outcome === r ? undefined : r })}
           >
             {r.charAt(0).toUpperCase() + r.slice(1)}
           </FilterChip>
@@ -175,6 +181,12 @@ export default function Games() {
           </FilterChip>
         ))}
       </div>
+
+      {error && (
+        <Panel accent="pink">
+          <span className="text-xs font-mono text-pink">{error}</span>
+        </Panel>
+      )}
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
@@ -248,8 +260,8 @@ export default function Games() {
                     <td className="px-3 py-2 text-sm text-text-primary">{game.whitePlayer}</td>
                     <td className="px-3 py-2 text-sm text-text-primary">{game.blackPlayer}</td>
                     <td className="px-3 py-2 text-sm">
-                      <StatusLabel accent={resultAccent(game.result)}>
-                        {game.result.charAt(0).toUpperCase() + game.result.slice(1)}
+                      <StatusLabel accent={resultAccent(game.outcome ?? 'draw')}>
+                        {(game.outcome ?? 'draw').charAt(0).toUpperCase() + (game.outcome ?? 'draw').slice(1)}
                       </StatusLabel>
                     </td>
                     <td className="px-3 py-2 text-sm text-text-muted font-mono">{game.source}</td>

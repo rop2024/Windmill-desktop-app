@@ -12,6 +12,7 @@ import { analysisQueue, type GameAnalysisResult } from '@main/services/stockfish
 import { settingsService, type AppSettings } from '@main/services/settings'
 import { statisticsService } from '@main/services/statistics/StatisticsService'
 import { openingExplorerService } from '@main/services/statistics/OpeningExplorerService'
+import { OpeningDetector } from '@openings/OpeningDetector'
 import { timelineService } from '@main/services/statistics/TimelineService'
 import { tacticalDetector } from '@main/services/analysis/TacticalDetector'
 import { weaknessEngine } from '@main/services/analysis/WeaknessEngine'
@@ -29,7 +30,7 @@ import { knowledgeGraph } from '@main/services/analysis/KnowledgeGraph'
 import { achievementEngine } from '@main/services/gamification/AchievementEngine'
 import { runMigrations } from '@main/services/database/migrator'
 import { SyncService, type SyncProgress } from '@main/services/sync/SyncService'
-import type { GameFilters, GameSource, GameResult } from '@shared/game'
+import type { GameFilters, GameSource, GameResult, GameOutcome } from '@shared/game'
 
 export type HandlerFn<Args, R> = (
   event: IpcMainInvokeEvent,
@@ -147,14 +148,16 @@ export function registerHandlers(): void {
     z.object({
       source: z.string().optional(),
       result: z.string().optional(),
+      outcome: z.string().optional(),
       search: z.string().optional(),
       limit: z.number().min(1).max(1000).optional(),
       offset: z.number().min(0).optional()
     }),
-    async (_event, { source, result, search, limit, offset }) => {
+    async (_event, { source, result, outcome, search, limit, offset }) => {
       const filters: GameFilters = {}
       if (source) filters.source = source as GameSource
       if (result) filters.result = result as GameResult
+      if (outcome) filters.outcome = outcome as GameOutcome
       if (search) filters.search = search
       const { rows, total } = repo.query(
         filters,
@@ -205,7 +208,20 @@ export function registerHandlers(): void {
     'pgn.import',
     z.object({ filePath: z.string() }),
     async (_event, { filePath }) => {
-      const service = new ImportService(emitProgress)
+      const detector = new OpeningDetector()
+      detector.loadFromTsv(
+        `C00\tKing's Pawn Opening\t\t1. e4
+C20\tKing's Knight Opening\t\t1. e4 e5 2. Nf3
+C50\tGiuoco Piano\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4
+C55\tTwo Knights Defense\t\t1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6
+C65\tRuy Lopez\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5
+C78\tRuy Lopez Closed\t\t1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7
+D20\tQueen's Gambit\t\t1. d4 d5 2. c4
+A00\tReti Opening\t\t1. Nf3
+B20\tSicilian Defense\t\t1. e4 c5
+A10\tEnglish Opening\t\t1. c4`
+      )
+      const service = new ImportService(emitProgress, detector)
       const report = await service.importFile(filePath)
       return { ok: true, data: report }
     }
