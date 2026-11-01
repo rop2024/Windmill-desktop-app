@@ -3,6 +3,7 @@ import { ChessBoard } from '../components/ChessBoard'
 import { Panel } from '../components/ui/Panel'
 import { KpiCard } from '../components/ui/KpiCard'
 import { FilterChip } from '../components/ui/FilterChip'
+import { PrimaryButton } from '../components/ui/PrimaryButton'
 
 type PuzzleDifficulty = 'easy' | 'medium' | 'hard' | 'expert'
 
@@ -64,7 +65,8 @@ function fmtTime(ms: number): string {
 }
 
 export default function PuzzleTrainer() {
-  const [loading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [selecting, setSelecting] = useState(false)
   const [mode, setMode] = useState<'daily' | 'weakness' | 'spaced'>('daily')
   const [puzzle, setPuzzle] = useState<Puzzle | null>(null)
@@ -86,7 +88,7 @@ export default function PuzzleTrainer() {
       const recentResult = await window.api.puzzleTrainer.recent(10)
       if (recentResult.ok) setRecent(recentResult.data)
     } catch {
-      // ignore
+      setError('Unable to load trainer statistics')
     }
   }, [])
 
@@ -102,9 +104,11 @@ export default function PuzzleTrainer() {
         setSelectResult(result.data)
         setPuzzle(result.data.puzzle)
         setMode(m)
+      } else {
+        setError(result.error.message)
       }
     } catch {
-      // ignore
+      setError('Unable to select a puzzle')
     } finally {
       setSelecting(false)
     }
@@ -129,8 +133,16 @@ export default function PuzzleTrainer() {
   }, [puzzle, startTime, loadStats])
 
   useEffect(() => {
-    loadStats()
-    selectPuzzle('daily')
+    let cancelled = false
+    const load = async () => {
+      setError(null)
+      await Promise.all([loadStats(), selectPuzzle('daily')])
+      if (!cancelled) setLoading(false)
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
   }, [loadStats, selectPuzzle])
 
   const elapsedMs = startTime != null ? Date.now() - startTime : 0
@@ -139,6 +151,21 @@ export default function PuzzleTrainer() {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
         Loading puzzle trainer…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center">
+        <p className="text-text-muted font-mono text-sm">{error}</p>
+        <PrimaryButton onClick={() => {
+          setLoading(true)
+          setError(null)
+          void Promise.all([loadStats(), selectPuzzle('daily')]).finally(() => setLoading(false))
+        }}>
+          Retry
+        </PrimaryButton>
       </div>
     )
   }

@@ -61,7 +61,23 @@ export default function Timeline() {
     loadSummary()
   }, [loadSummary])
 
-  if (loading || !summary) {
+  const ratingProgression = summary?.ratingProgression ?? []
+  const countMap = useMemo(() => {
+    const map = new Map<string, number>()
+    for (const p of ratingProgression) {
+      map.set(p.date, (map.get(p.date) ?? 0) + 1)
+    }
+    return map
+  }, [ratingProgression])
+
+  const ratingChartData = useMemo(
+    () => ratingProgression
+      .filter((p) => Number.isFinite(p.rating) && p.date.length > 0)
+      .map((p) => ({ date: p.date, rating: Number(p.rating) })),
+    [ratingProgression]
+  )
+
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
         Loading timeline…
@@ -69,19 +85,22 @@ export default function Timeline() {
     )
   }
 
-  const s = summary
-  const countMap = useMemo(() => {
-    const map = new Map<string, number>()
-    for (const p of s.ratingProgression) {
-      map.set(p.date, (map.get(p.date) ?? 0) + 1)
-    }
-    return map
-  }, [s.ratingProgression])
+  if (error || !summary) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center">
+        <p className="text-text-muted font-mono text-sm">{error ?? 'No timeline data available'}</p>
+        <button
+          type="button"
+          onClick={loadSummary}
+          className="border border-cyan px-3 py-2 text-xs font-mono uppercase text-cyan hover:bg-cyan/10"
+        >
+          Retry
+        </button>
+      </div>
+    )
+  }
 
-  const ratingChartData = useMemo(
-    () => s.ratingProgression.map((p) => ({ date: p.date, rating: p.rating })),
-    [s.ratingProgression]
-  )
+  const s = summary
 
   const achievedMilestones = s.milestones.filter((m) => m.achieved)
 
@@ -113,7 +132,7 @@ export default function Timeline() {
             <div className="h-[300px] w-full">
               {ratingChartData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={ratingChartData}>
+                  <AreaChart data={ratingChartData} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="colorRating" x1="0" y1="0" x2="0" y2="1">
                         <stop offset="5%" stopColor="#00F0FF" stopOpacity={0.8} />
@@ -140,6 +159,7 @@ export default function Timeline() {
                       strokeWidth={2}
                       fillOpacity={1}
                       fill="url(#colorRating)"
+                      connectNulls
                     />
                   </AreaChart>
                 </ResponsiveContainer>

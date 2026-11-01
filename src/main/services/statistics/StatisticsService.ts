@@ -165,7 +165,10 @@ export class StatisticsService {
   }
 
   ratingHistory(filters: GameFilters = {}, timeClass?: TimeClass): RatingPoint[] {
-    const games = this.fetchGames({ ...filters, timeClass })
+    const effectiveFilters = timeClass === undefined
+      ? filters
+      : { ...filters, timeClass }
+    const games = this.fetchGames(effectiveFilters)
     return games
       .filter((g) => g.playerRating != null && g.playedAt != null)
       .map((g) => ({ date: new Date(g.playedAt!).toISOString().slice(0, 10), rating: g.playerRating! }))

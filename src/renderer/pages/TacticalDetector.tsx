@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Panel } from '../components/ui/Panel'
 import { KpiCard } from '../components/ui/KpiCard'
+import { PrimaryButton } from '../components/ui/PrimaryButton'
 
 type Color = 'w' | 'b'
 
@@ -102,10 +103,12 @@ export default function TacticalDetector() {
   const [summary, setSummary] = useState<TacticSummaryRow[]>([])
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [gameTactics, setGameTactics] = useState<GameTactics | null>(null)
+  const [analyzingAll, setAnalyzingAll] = useState(false)
+  const [analysisProgress, setAnalysisProgress] = useState({ done: 0, total: 0 })
 
   const loadGames = useCallback(async () => {
     try {
-      const result = await window.api.games.query({}, 100, 0)
+      const result = await window.api.games.query({}, 1000, 0)
       if (result.ok) setGames(result.data.games.map((g) => ({
         id: g.id,
         whitePlayer: g.whitePlayer,
@@ -128,21 +131,49 @@ export default function TacticalDetector() {
   }, [])
 
   const analyzeGame = useCallback(async (gameId: string) => {
+    if (analyzingAll) return
     setLoading(true)
     setSelectedGame(gameId)
     try {
       const result = await window.api.tactics.getForGame(gameId)
-      if (result.ok) setGameTactics(result.data)
+      if (result.ok) {
+        setGameTactics(result.data)
+        await loadSummary()
+      }
     } catch {
       // ignore
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [analyzingAll, loadSummary])
+
+  const analyzeAllGames = useCallback(async () => {
+    if (analyzingAll || games.length === 0) return
+    setAnalyzingAll(true)
+    setAnalysisProgress({ done: 0, total: games.length })
+    setSelectedGame(null)
+    try {
+      for (let index = 0; index < games.length; index++) {
+        const game = games[index]
+        await window.api.tactics.getForGame(game.id)
+        setAnalysisProgress({ done: index + 1, total: games.length })
+      }
+      await loadSummary()
+    } finally {
+      setAnalyzingAll(false)
+    }
+  }, [analyzingAll, games, loadSummary])
 
   useEffect(() => {
-    loadGames()
-    loadSummary()
+    let cancelled = false
+    const load = async () => {
+      await Promise.all([loadGames(), loadSummary()])
+      if (!cancelled) setLoading(false)
+    }
+    void load()
+    return () => {
+      cancelled = true
+    }
   }, [loadGames, loadSummary])
 
   const globalByType = useMemo(() => {
@@ -190,14 +221,27 @@ export default function TacticalDetector() {
             Tactical Detector
           </h1>
         </div>
+        <PrimaryButton onClick={analyzeAllGames} disabled={analyzingAll || games.length === 0}>
+          {analyzingAll
+            ? `Analyzing ${analysisProgress.done}/${analysisProgress.total}…`
+            : 'Analyze all games'}
+        </PrimaryButton>
       </div>
 
       <div className="wm-grid-4 grid grid-cols-1 md:grid-cols-4 gap-3">
         <KpiCard accent="green" value={totalCreated.toLocaleString()} label="Tactics created" />
         <KpiCard accent="pink" value={totalMissed.toLocaleString()} label="Tactics missed" />
         <KpiCard accent="orange" value={totalDefended.toLocaleString()} label="Tactics defended" />
-        <KpiCard accent="cyan" value={games.length.toLocaleString()} label="Analyzed games" />
+        <KpiCard accent="cyan" value={games.length.toLocaleString()} label="Imported games" />
       </div>
+
+      {summary.length === 0 && (
+        <Panel accent="yellow" label="Tactical analysis required">
+          <p className="text-xs font-mono text-text-muted">
+            Tactical statistics are generated per game. Select a game below to analyze it; the summary will update when analysis finishes.
+          </p>
+        </Panel>
+      )}
 
       <Panel accent="cyan" label="Tactic breakdown (all games)">
         <div className="overflow-x-auto">
@@ -246,7 +290,7 @@ export default function TacticalDetector() {
                 <tr
                   key={g.id}
                   onClick={() => analyzeGame(g.id)}
-                  className="cursor-pointer hover:bg-white/5 last:border-0 transition-colors"
+                  className={`cursor-pointer hover:bg-white/5 last:border-0 transition-colors ${analyzingAll ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   <td className="px-3 py-2 text-xs font-sans text-text-primary">
                     {g.whitePlayer} vs {g.blackPlayer}

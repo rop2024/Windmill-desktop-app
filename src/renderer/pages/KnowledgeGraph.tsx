@@ -53,7 +53,7 @@ const EDGE_LABEL: Record<string, string> = {
 }
 
 export default function KnowledgeGraph() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [graph, setGraph] = useState<KnowledgeGraphData | null>(null)
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
   const [traversed, setTraversed] = useState<KnowledgeGraphData | null>(null)
@@ -95,7 +95,7 @@ export default function KnowledgeGraph() {
     loadGraph()
   }, [loadGraph])
 
-  const g = graph!
+  const g = graph ?? { nodes: [], edges: [] }
   const nodesByType = useMemo(() => {
     const map = new Map<string, GraphNode[]>()
     for (const n of g.nodes) {
@@ -120,6 +120,21 @@ export default function KnowledgeGraph() {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
         Building knowledge graph…
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center">
+        <p className="text-text-muted font-mono text-sm">{error}</p>
+        <button
+          type="button"
+          onClick={loadGraph}
+          className="border border-cyan px-3 py-2 text-xs font-mono uppercase text-cyan hover:bg-cyan/10"
+        >
+          Retry
+        </button>
       </div>
     )
   }

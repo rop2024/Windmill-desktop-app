@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Panel } from '../components/ui/Panel'
 import { KpiCard } from '../components/ui/KpiCard'
+import { PrimaryButton } from '../components/ui/PrimaryButton'
 
 type WeaknessCategory =
   | 'opening'
@@ -58,14 +59,17 @@ function starsColor(stars: number): 'cyan' | 'yellow' | 'green' | 'magenta' | 'p
 export default function WeaknessEngine() {
   const [loading, setLoading] = useState(true)
   const [profile, setProfile] = useState<WeaknessProfile | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const loadProfile = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      const result = await window.api.weaknesses.getProfile()
+      const result = await window.api.weakness.getProfile()
       if (result.ok) setProfile(result.data)
+      else setError(result.error.message)
     } catch {
-      // ignore
+      setError('Unable to load weakness profile')
     } finally {
       setLoading(false)
     }
@@ -75,10 +79,19 @@ export default function WeaknessEngine() {
     loadProfile()
   }, [loadProfile])
 
-  if (loading || !profile) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
         Loading weakness engine…
+      </div>
+    )
+  }
+
+  if (error || !profile) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-center">
+        <p className="text-text-muted font-mono text-sm">{error ?? 'No weakness profile available'}</p>
+        <PrimaryButton onClick={loadProfile}>Retry</PrimaryButton>
       </div>
     )
   }

@@ -542,6 +542,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }),
     async (_event, filters) => {
+      await prepareStatistics()
       const progression = timelineService.ratingProgression(filters as GameFilters)
       return { ok: true, data: progression }
     }
@@ -557,6 +558,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const summary = timelineService.summary(filters as GameFilters)
       return { ok: true, data: summary }
     }
@@ -1206,8 +1208,9 @@ export function registerHandlers(): void {
       outcome: z.string().optional(),
       timeClass: z.string().optional(),
       search: z.string().optional()
-    }),
+    }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const graph = knowledgeGraph.build(filters as GameFilters)
       return { ok: true, data: graph }
     }

@@ -16,6 +16,8 @@ type BoardGame = {
   accuracy: number
   moves: number
   blunders: number
+  tacticsCreated: number
+  tacticsDefended: number
   timeClass: string | null
 }
 
@@ -133,6 +135,7 @@ export default function BoardOfFame() {
                     <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right">Moves</th>
                     <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right">Result</th>
                     <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right">Opponent</th>
+                    <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right">Tactics</th>
                     <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right">Date</th>
                   </tr>
                 </thead>
@@ -150,12 +153,13 @@ export default function BoardOfFame() {
                         </span>
                       </td>
                       <td className="px-3 py-2 text-xs font-mono text-right">{fmtRating(g.opponentRating)}</td>
+                      <td className="px-3 py-2 text-xs font-mono text-green text-right">{g.tacticsCreated}</td>
                       <td className="px-3 py-2 text-xs font-mono text-right">{fmtDate(g.playedAt)}</td>
                     </tr>
                   ))}
                   {s.bestGames.length === 0 && (
                     <tr>
-                      <td className="px-3 py-4 text-center text-text-muted text-xs font-mono" colSpan={6}>
+                      <td className="px-3 py-4 text-center text-text-muted text-xs font-mono" colSpan={7}>
                         No games analyzed yet. Analyze games to populate the board of fame.
                       </td>
                     </tr>

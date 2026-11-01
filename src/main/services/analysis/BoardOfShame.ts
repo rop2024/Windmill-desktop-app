@@ -1,6 +1,7 @@
 import { statisticsService } from '../statistics/StatisticsService'
 import { analysisRepository } from './AnalysisRepository'
 import { computeAccuracy, type AccuracyInput } from './calculateAccuracy'
+import { getDB } from '../database/connection'
 import type { GameFilters, GameOutcome } from '@shared/game'
 
 export type ShameGame = {
@@ -17,6 +18,8 @@ export type ShameGame = {
   accuracy: number
   moves: number
   blunders: number
+  tacticsMissed: number
+  tacticsDefended: number
   timeClass: string | null
 }
 
@@ -55,6 +58,7 @@ export type ShameSummary = {
   fastestLosses: ShameGame[]
   missedMates: ShameMissedMate[]
   timeTrouble: ShameTimeTrouble[]
+  missedTactics: number
 }
 
 function playerPlies(playerColor: string | null, maxPly: number): Set<number> {
@@ -71,6 +75,13 @@ function playerPlies(playerColor: string | null, maxPly: number): Set<number> {
 export class BoardOfShame {
   summary(filters: GameFilters = {}, limit = 20): ShameSummary {
     const games = statisticsService.fetchGames(filters)
+    const tacticCounts = getDB().prepare(
+      `SELECT game_id AS gameId,
+              SUM(CASE WHEN label = 'missed' THEN 1 ELSE 0 END) AS missed,
+              SUM(CASE WHEN label = 'defended' THEN 1 ELSE 0 END) AS defended
+       FROM game_tactics GROUP BY game_id`
+    ).all() as Array<{ gameId: string; missed: number; defended: number }>
+    const tacticsByGame = new Map(tacticCounts.map((row) => [row.gameId, row]))
     const shameGames: ShameGame[] = []
     const allBlunders: ShameMove[] = []
 
@@ -90,6 +101,7 @@ export class BoardOfShame {
       }))
       const accuracy = computeAccuracy(inputs)
       const blunders = ownPlys.filter((p) => p.classification === 'mistake' || p.classification === 'blunder').length
+      const tactics = tacticsByGame.get(g.id)
 
       const game: ShameGame = {
         id: g.id,
@@ -105,6 +117,8 @@ export class BoardOfShame {
         accuracy,
         moves: ownPlys.length,
         blunders,
+        tacticsMissed: tactics?.missed ?? 0,
+        tacticsDefended: tactics?.defended ?? 0,
         timeClass: g.timeClass
       }
       shameGames.push(game)
@@ -181,7 +195,14 @@ export class BoardOfShame {
       .slice(0, limit)
       .map((g) => ({ ...g, accuracyDrop: Math.max(0, 80 - g.accuracy) }))
 
-    return { worstBlunders, largestThrows, fastestLosses, missedMates, timeTrouble }
+    return {
+      worstBlunders,
+      largestThrows,
+      fastestLosses,
+      missedMates,
+      timeTrouble,
+      missedTactics: shameGames.reduce((total, game) => total + game.tacticsMissed, 0)
+    }
   }
 }
 

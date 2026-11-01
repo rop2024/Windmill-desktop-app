@@ -1,6 +1,7 @@
 import { statisticsService } from '../statistics/StatisticsService'
 import { analysisRepository } from './AnalysisRepository'
 import { computeAccuracy, type AccuracyInput } from './calculateAccuracy'
+import { getDB } from '../database/connection'
 import type { GameFilters, GameOutcome } from '@shared/game'
 
 export type BoardGame = {
@@ -17,6 +18,8 @@ export type BoardGame = {
   accuracy: number
   moves: number
   blunders: number
+  tacticsCreated: number
+  tacticsDefended: number
   timeClass: string | null
 }
 
@@ -66,6 +69,13 @@ function playerPlies(playerColor: string | null, maxPly: number): Set<number> {
 export class BoardOfFame {
   summary(filters: GameFilters = {}, limit = 20): BoardSummary {
     const games = statisticsService.fetchGames(filters)
+    const tacticCounts = getDB().prepare(
+      `SELECT game_id AS gameId,
+              SUM(CASE WHEN label = 'created' THEN 1 ELSE 0 END) AS created,
+              SUM(CASE WHEN label = 'defended' THEN 1 ELSE 0 END) AS defended
+       FROM game_tactics GROUP BY game_id`
+    ).all() as Array<{ gameId: string; created: number; defended: number }>
+    const tacticsByGame = new Map(tacticCounts.map((row) => [row.gameId, row]))
 
     const boardGames: BoardGame[] = []
     const allMoves: BoardMove[] = []
@@ -86,6 +96,7 @@ export class BoardOfFame {
       }))
       const accuracy = computeAccuracy(inputs)
       const blunders = ownPlys.filter((p) => p.classification === 'mistake' || p.classification === 'blunder').length
+      const tactics = tacticsByGame.get(g.id)
 
       boardGames.push({
         id: g.id,
@@ -101,6 +112,8 @@ export class BoardOfFame {
         accuracy,
         moves: ownPlys.length,
         blunders,
+        tacticsCreated: tactics?.created ?? 0,
+        tacticsDefended: tactics?.defended ?? 0,
         timeClass: g.timeClass
       })
 

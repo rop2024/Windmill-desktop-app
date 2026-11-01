@@ -18,12 +18,6 @@ const TIME_CLASSES = ['bullet', 'blitz', 'rapid', 'classical', 'daily'] as const
 
 type RatingPoint = { date: string; rating: number }
 
-function ChartDot({ cx, cy }: { cx: number; cy: number }) {
-  return (
-    <circle cx={cx} cy={cy} r={3.5} fill="#FCEE09" stroke="#0B0B10" strokeWidth={1} />
-  )
-}
-
 export default function Dashboard() {
   const { filters, setFilter, setLoading, loading } = useStatsStore()
 
@@ -177,7 +171,7 @@ export default function Dashboard() {
                     dataKey="rating"
                     stroke="#00F0FF"
                     strokeWidth={2}
-                    dot={ChartDot}
+                    dot={false}
                   />
                 </LineChart>
               </ResponsiveContainer>

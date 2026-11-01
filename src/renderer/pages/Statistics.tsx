@@ -74,6 +74,8 @@ export default function Statistics() {
   const [opponents, setOpponents] = useState<OpponentStat[]>([])
   const [timeControls, setTimeControls] = useState<TimeControlStat[]>([])
   const [calendar, setCalendar] = useState<CalendarDay[]>([])
+  const [showAllOpenings, setShowAllOpenings] = useState(false)
+  const [showAllOpponents, setShowAllOpponents] = useState(false)
 
   const loadStats = useCallback(async () => {
     setLoading(true)
@@ -107,6 +109,8 @@ export default function Statistics() {
   }, [loadStats])
 
   const currentYear = year ?? new Date().getFullYear()
+  const visibleOpenings = showAllOpenings ? openings : openings.slice(0, 8)
+  const visibleOpponents = showAllOpponents ? opponents : opponents.slice(0, 8)
 
   const statAccent = (key: string): 'cyan' | 'yellow' | 'green' | 'magenta' | 'pink' | 'orange' => {
     switch (key) {
@@ -192,7 +196,7 @@ export default function Statistics() {
                     </tr>
                   </thead>
                   <tbody>
-                    {openings.map((o) => (
+                    {visibleOpenings.map((o) => (
                       <tr key={o.opening} className="hover:bg-white/5 last:border-0">
                         <td className="px-3 py-2 text-xs font-sans font-bold text-text-primary">{o.opening}</td>
                         <td className="px-3 py-2 text-xs font-mono text-text-muted text-right">{o.games}</td>
@@ -216,6 +220,15 @@ export default function Statistics() {
                     )}
                   </tbody>
                 </table>
+                {openings.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllOpenings((expanded) => !expanded)}
+                    className="mt-3 w-full border border-border px-3 py-2 text-xs font-mono uppercase text-cyan hover:border-cyan hover:bg-cyan/10"
+                  >
+                    {showAllOpenings ? 'Show less' : `Show all ${openings.length} openings`}
+                  </button>
+                )}
               </div>
             </Panel>
           )}
@@ -235,7 +248,7 @@ export default function Statistics() {
                     </tr>
                   </thead>
                   <tbody>
-                    {opponents.map((o) => (
+                    {visibleOpponents.map((o) => (
                       <tr key={o.opponent} className="hover:bg-white/5 last:border-0">
                         <td className="px-3 py-2 text-xs font-sans font-bold text-text-primary">{o.opponent}</td>
                         <td className="px-3 py-2 text-xs font-mono text-text-muted text-right">{o.games}</td>
@@ -259,6 +272,15 @@ export default function Statistics() {
                     )}
                   </tbody>
                 </table>
+                {opponents.length > 8 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllOpponents((expanded) => !expanded)}
+                    className="mt-3 w-full border border-border px-3 py-2 text-xs font-mono uppercase text-orange hover:border-orange hover:bg-orange/10"
+                  >
+                    {showAllOpponents ? 'Show less' : `Show all ${opponents.length} opponents`}
+                  </button>
+                )}
               </div>
             </Panel>
           )}

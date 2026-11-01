@@ -16,6 +16,8 @@ type ShameGame = {
   accuracy: number
   moves: number
   blunders: number
+  tacticsMissed: number
+  tacticsDefended: number
   timeClass: string | null
 }
 
@@ -47,6 +49,7 @@ type ShameSummary = {
   fastestLosses: ShameGame[]
   missedMates: ShameMissedMate[]
   timeTrouble: ShameTimeTrouble[]
+  missedTactics: number
 }
 
 function fmtDate(ms: number | null): string {
@@ -91,7 +94,7 @@ export default function BoardOfShame() {
     )
   }
 
-  const s = summary ?? { worstBlunders: [], largestThrows: [], fastestLosses: [], missedMates: [], timeTrouble: [] }
+  const s = summary ?? { worstBlunders: [], largestThrows: [], fastestLosses: [], missedMates: [], timeTrouble: [], missedTactics: 0 }
 
   return (
     <div className="bg-background min-h-screen space-y-4">
@@ -109,6 +112,7 @@ export default function BoardOfShame() {
         <KpiCard accent="orange" value={s.largestThrows.length} label="Throws" />
         <KpiCard accent="magenta" value={s.fastestLosses.length} label="Fastest losses" />
         <KpiCard accent="cyan" value={s.timeTrouble.length} label="Time trouble" />
+        <KpiCard accent="pink" value={s.missedTactics} label="Missed tactics" />
       </div>
 
       <div className="flex flex-col lg:flex-row gap-4">
