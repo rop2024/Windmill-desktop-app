@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react'
 
-type BoardTheme = 'wood' | 'marble' | 'blue' | 'green'
+type BoardTheme = 'cyberpunk'
 type PieceSet = 'classic' | 'neo' | 'alpha' | 'tatiana'
 
 type BoardThemeContextValue = {
@@ -19,22 +19,17 @@ export function useBoardTheme() {
 }
 
 const BOARD_COLORS: Record<BoardTheme, { light: string; dark: string }> = {
-  wood: { light: '#F0D9B5', dark: '#B58863' },
-  marble: { light: '#E6E6E6', dark: '#769656' },
-  blue: { light: '#CFC6C4', dark: '#5D7A89' },
-  green: { light: '#E3EDCD', dark: '#769656' },
+  cyberpunk: { light: '#18182A', dark: '#0B0B10' },
 }
 
-export function BoardThemeProvider({ initialBoardTheme = 'wood', initialPieceSet = 'classic', children }: { initialBoardTheme?: BoardTheme; initialPieceSet?: PieceSet; children: ReactNode }) {
+export function BoardThemeProvider({ initialBoardTheme = 'cyberpunk', initialPieceSet = 'classic', children }: { initialBoardTheme?: BoardTheme; initialPieceSet?: PieceSet; children: ReactNode }) {
   const [boardTheme, setBoardThemeState] = useState<BoardTheme>(initialBoardTheme)
   const [pieceSet, setPieceSetState] = useState<PieceSet>(initialPieceSet)
 
   useEffect(() => {
     try {
       const stored = localStorage.getItem('windmill.boardTheme')
-      if (stored === 'wood' || stored === 'marble' || stored === 'blue' || stored === 'green') {
-        setBoardThemeState(stored)
-      }
+      if (stored === 'cyberpunk') setBoardThemeState(stored)
     } catch {
       // ignore
     }

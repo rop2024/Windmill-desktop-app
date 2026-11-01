@@ -103,6 +103,14 @@ function emitProgress(progress: unknown): void {
   if (progressSender) progressSender(progress)
 }
 
+async function prepareStatistics(): Promise<void> {
+  const settings = await settingsService.get()
+  statisticsService.setPlayerNames([
+    settings.chessComUsername,
+    ...settings.myUsernames.split(',')
+  ])
+}
+
 export function registerHandlers(): void {
   const db = getDB()
   const repo = new GameRepository()
@@ -307,7 +315,7 @@ export function registerHandlers(): void {
     'settings.set',
     z.object({
       theme: z.enum(['light', 'dark', 'system']).optional(),
-      boardTheme: z.enum(['wood', 'marble', 'blue', 'green']).optional(),
+      boardTheme: z.literal('cyberpunk').optional(),
       pieceSet: z.enum(['classic', 'neo', 'alpha', 'tatiana']).optional(),
       myUsernames: z.string().optional(),
       autoSync: z.boolean().optional(),
@@ -404,6 +412,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const stats = statisticsService.overview(filters as GameFilters)
       return { ok: true, data: stats }
     }
@@ -419,6 +428,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const history = statisticsService.ratingHistory(filters as GameFilters)
       return { ok: true, data: history }
     }
@@ -434,6 +444,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const result = statisticsService.resultsByColor(filters as GameFilters)
       return { ok: true, data: result }
     }
@@ -449,6 +460,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const openings = statisticsService.openings(filters as GameFilters)
       return { ok: true, data: openings }
     }
@@ -464,6 +476,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const opponents = statisticsService.opponents(filters as GameFilters)
       return { ok: true, data: opponents }
     }
@@ -479,6 +492,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const timeControls = statisticsService.timeControls(filters as GameFilters)
       return { ok: true, data: timeControls }
     }
@@ -494,6 +508,7 @@ export function registerHandlers(): void {
       search: z.string().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const streaks = statisticsService.streaks(filters as GameFilters)
       return { ok: true, data: streaks }
     }
@@ -510,6 +525,7 @@ export function registerHandlers(): void {
       year: z.number().optional()
     }).default({}),
     async (_event, filters) => {
+      await prepareStatistics()
       const f = filters ?? {}
       const calendar = statisticsService.calendar(f as GameFilters, f.year)
       return { ok: true, data: calendar }

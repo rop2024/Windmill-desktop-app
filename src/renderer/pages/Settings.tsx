@@ -8,7 +8,7 @@ import { useTheme } from '../context/ThemeContext'
 import { useBoardTheme } from '../context/BoardThemeContext'
 
 const THEME_OPTIONS = ['system', 'dark', 'light'] as const
-const BOARD_THEME_OPTIONS = ['wood', 'marble', 'blue', 'green'] as const
+const BOARD_THEME_OPTIONS = ['cyberpunk'] as const
 const PIECE_SET_OPTIONS = ['classic', 'neo', 'alpha', 'tatiana'] as const
 
 export default function Settings() {
@@ -16,7 +16,7 @@ export default function Settings() {
   const { boardTheme, pieceSet, setBoardTheme, setPieceSet } = useBoardTheme()
   const [settings, setSettings] = useState<AppSettings>({
     theme: 'system',
-    boardTheme: 'wood',
+    boardTheme: 'cyberpunk',
     pieceSet: 'classic',
     myUsernames: '',
     dbLocation: '',

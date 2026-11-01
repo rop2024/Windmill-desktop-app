@@ -54,7 +54,7 @@ export type SyncState = {
 }
 
 export type Theme = 'light' | 'dark' | 'system'
-export type BoardTheme = 'wood' | 'marble' | 'blue' | 'green'
+export type BoardTheme = 'cyberpunk'
 export type PieceSet = 'classic' | 'neo' | 'alpha' | 'tatiana'
 
 export type EngineSettings = {

@@ -45,7 +45,7 @@ contextBridge.exposeInMainWorld('api', {
     get: () => ipcRenderer.invoke('settings.get', {}),
     set: (patch: {
       theme?: 'light' | 'dark' | 'system'
-      boardTheme?: 'wood' | 'marble' | 'blue' | 'green'
+      boardTheme?: 'cyberpunk'
       pieceSet?: 'classic' | 'neo' | 'alpha' | 'tatiana'
       myUsernames?: string
       autoSync?: boolean

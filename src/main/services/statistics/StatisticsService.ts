@@ -2,6 +2,8 @@ import { getDB } from '../database/connection'
 import { buildWhere } from '../database/repositories/GameRepository'
 import { type GameFilters, type GameOutcome, type PlayerColor, type TimeClass } from '@shared/game'
 
+let configuredPlayerNames: string[] = []
+
 export type StoredGame = {
   id: string
   whitePlayer: string
@@ -91,8 +93,17 @@ export class StatisticsService {
     return getDB()
   }
 
+  setPlayerNames(names: string[]): void {
+    configuredPlayerNames = names
+      .map((name) => name.trim().toLowerCase())
+      .filter((name, index, values) => name.length > 0 && values.indexOf(name) === index)
+  }
+
   fetchGames(filters: GameFilters = {}): StoredGame[] {
-    const { where, params } = buildWhere(filters)
+    // Apply nullable statistics filters after deriving values from legacy PGNs.
+    // Filtering them in SQL would exclude older imports whose columns are null.
+    const { timeClass, outcome, ...sqlFilters } = filters
+    const { where, params } = buildWhere(sqlFilters)
     const rows = this.db.prepare(
       `SELECT id, white_player, black_player, result, pgn, player_color, player_rating, opponent, opponent_rating, outcome, time_class, played_at FROM games ${where} ORDER BY played_at ASC`
     ).all(params) as Array<{
@@ -109,20 +120,33 @@ export class StatisticsService {
       time_class: string | null
       played_at: number | null
     }>
-    return rows.map((r) => ({
-      id: r.id,
-      whitePlayer: r.white_player,
-      blackPlayer: r.black_player,
-      result: r.result,
-      pgn: r.pgn,
-      playerColor: r.player_color as PlayerColor | null,
-      playerRating: r.player_rating,
-      opponent: r.opponent,
-      opponentRating: r.opponent_rating,
-      outcome: r.outcome as GameOutcome | null,
-      timeClass: r.time_class as TimeClass | null,
-      playedAt: r.played_at
-    }))
+    const games = rows.map((r) => {
+      const derived = deriveStatistics(r.pgn, r.result)
+      const hasConfiguredIdentity = configuredPlayerNames.some((name) =>
+        name === r.white_player.toLowerCase() || name === r.black_player.toLowerCase()
+      )
+      const storedOutcome = r.outcome === 'win' || r.outcome === 'loss' || r.outcome === 'draw'
+        ? r.outcome
+        : null
+      return {
+        id: r.id,
+        whitePlayer: r.white_player,
+        blackPlayer: r.black_player,
+        result: r.result,
+        pgn: r.pgn,
+        playerColor: hasConfiguredIdentity ? derived.playerColor : (r.player_color as PlayerColor | null) ?? derived.playerColor,
+        playerRating: hasConfiguredIdentity ? derived.playerRating : r.player_rating ?? derived.playerRating,
+        opponent: hasConfiguredIdentity ? derived.opponent : r.opponent ?? derived.opponent,
+        opponentRating: hasConfiguredIdentity ? derived.opponentRating : r.opponent_rating ?? derived.opponentRating,
+        outcome: hasConfiguredIdentity ? derived.outcome : storedOutcome ?? derived.outcome,
+        timeClass: (r.time_class as TimeClass | null) ?? derived.timeClass,
+        playedAt: r.played_at ?? derived.playedAt
+      }
+    })
+    return games.filter((game) =>
+      (outcome === undefined || game.outcome === outcome) &&
+      (timeClass === undefined || game.timeClass === timeClass)
+    )
   }
 
   overview(filters: GameFilters = {}): OverviewStats {
@@ -290,6 +314,60 @@ export class StatisticsService {
 function extractOpening(pgn: string): string | null {
   const match = pgn.match(/\[Opening "(.*?)"/)
   return match ? match[1] : null
+}
+
+function header(pgn: string, name: string): string | null {
+  const match = pgn.match(new RegExp(`\\[${name} "([^"]*)"`))
+  return match?.[1] ?? null
+}
+
+function deriveStatistics(
+  pgn: string,
+  result: string
+): Pick<StoredGame, 'playerColor' | 'playerRating' | 'opponent' | 'opponentRating' | 'outcome' | 'timeClass' | 'playedAt'> {
+  const white = header(pgn, 'White') ?? ''
+  const black = header(pgn, 'Black') ?? ''
+  const player = (header(pgn, 'Player') ?? header(pgn, 'Username') ?? '').toLowerCase()
+  const configuredPlayer = player || configuredPlayerNames.find((name) =>
+    name === white.toLowerCase() || name === black.toLowerCase()
+  ) || ''
+  const playerColor: PlayerColor = configuredPlayer && black.toLowerCase() === configuredPlayer ? 'b' : 'w'
+  const rating = Number.parseInt(header(pgn, playerColor === 'w' ? 'WhiteElo' : 'BlackElo') ?? '', 10)
+  const opponentRating = Number.parseInt(header(pgn, playerColor === 'w' ? 'BlackElo' : 'WhiteElo') ?? '', 10)
+  const outcome = result === '1/2-1/2'
+    ? 'draw'
+    : result === '1-0' || result === '0-1'
+      ? ((result === '1-0') === (playerColor === 'w') ? 'win' : 'loss')
+      : null
+  const date = header(pgn, 'UTCDate') ?? header(pgn, 'Date')
+  const parsedDate = date && /^\d{4}[.-]\d{2}[.-]\d{2}$/.test(date)
+    ? Date.parse(`${date.replace(/\./g, '-')}T00:00:00Z`)
+    : null
+  const timeClass = header(pgn, 'TimeClass')?.toLowerCase() ?? timeClassFor(header(pgn, 'TimeControl'))
+  return {
+    playerColor,
+    playerRating: Number.isFinite(rating) ? rating : null,
+    opponent: playerColor === 'w' ? black || null : white || null,
+    opponentRating: Number.isFinite(opponentRating) ? opponentRating : null,
+    outcome: outcome as GameOutcome | null,
+    timeClass: (timeClass as TimeClass | undefined) ?? null,
+    playedAt: parsedDate != null && Number.isFinite(parsedDate) ? parsedDate : null
+  }
+
+}
+
+function timeClassFor(value: string | null): TimeClass | null {
+  if (!value) return null
+  if (value.includes('/')) {
+    const dailySeconds = Number.parseInt(value.split('/')[1], 10)
+    return dailySeconds >= 86400 ? 'daily' : null
+  }
+  const seconds = Number.parseInt(value.split(/[+:-]/)[0], 10)
+  if (!Number.isFinite(seconds)) return null
+  if (seconds < 180) return 'bullet'
+  if (seconds < 600) return 'blitz'
+  if (seconds < 1800) return 'rapid'
+  return 'classical'
 }
 
 export const statisticsService = new StatisticsService()

@@ -10,6 +10,7 @@ export default function ExplorerLanding() {
     whitePlayer: string
     blackPlayer: string
     result: string
+    pgn: string
     playedAt?: number | null
   }>>([])
   const [loading, setLoading] = useState(true)
@@ -94,21 +95,35 @@ export default function ExplorerLanding() {
             </button>
           </div>
         ) : (
-          <div className="divide-y divide-border/50">
+          <div className="overflow-x-auto">
+            <div className="grid min-w-[640px]">
+              <div className="grid grid-cols-[1.4fr_1.4fr_0.8fr_1fr_0.7fr] gap-3 border-b border-border px-3 py-2 text-[10px] font-mono uppercase text-text-muted">
+                <span>White</span>
+                <span>Black</span>
+                <span>Result</span>
+                <span>Date</span>
+                <span className="text-right">Action</span>
+              </div>
             {games.map((game) => (
-              <button
+              <div
                 key={game.id}
-                onClick={() => navigate(`/explorer/${game.id}`)}
-                className="w-full flex items-center justify-between gap-3 px-2 py-3 text-left hover:bg-white/5 transition-colors"
+                className="grid grid-cols-[1.4fr_1.4fr_0.8fr_1fr_0.7fr] items-center gap-3 border-b border-border/50 px-3 py-3 hover:bg-white/5 transition-colors"
               >
-                <span className="text-text-primary text-sm font-sans">
-                  {game.whitePlayer} <span className="text-text-dim">vs</span> {game.blackPlayer}
-                </span>
+                <span className="truncate text-text-primary text-sm font-sans" title={game.whitePlayer}>{game.whitePlayer}</span>
+                <span className="truncate text-text-primary text-sm font-sans" title={game.blackPlayer}>{game.blackPlayer}</span>
+                <span className="truncate text-text-muted text-xs font-mono">{game.result}</span>
                 <span className="text-text-muted text-xs font-mono">
-                  {game.result} {game.playedAt ? new Date(game.playedAt).toLocaleDateString() : ''}
+                  {game.playedAt ? new Date(game.playedAt).toLocaleDateString() : '—'}
                 </span>
-              </button>
+                <button
+                  onClick={() => navigate(`/explorer/${game.id}`)}
+                  className="justify-self-end border border-cyan px-3 py-1.5 text-cyan font-mono text-xs uppercase hover:bg-cyan/10 transition-colors"
+                >
+                  View
+                </button>
+              </div>
             ))}
+            </div>
           </div>
         )}
       </Panel>

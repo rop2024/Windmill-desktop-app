@@ -5,7 +5,7 @@ import { type ParsedGame } from '@pgn/types'
 import { flattenMainLine } from '@pgn/flattenMainLine'
 import { serialize } from '@pgn/serialize'
 import { logger } from '../../logger'
-import type { Game, GameFilters, GameOutcome, PlayerColor, TimeClass } from '@shared/game'
+import type { Game, GameFilters, GameOutcome, GameResult, PlayerColor, TimeClass } from '@shared/game'
 
 export type GameRow = Game & { external_id?: string | null }
 
@@ -289,12 +289,18 @@ export function buildWhere(filters: GameFilters): { where: string; params: unkno
   const params: unknown[] = []
 
   if (filters.source) {
-    conditions.push('source = ?')
+    conditions.push('LOWER(source) = LOWER(?)')
     params.push(filters.source)
   }
   if (filters.result) {
-    conditions.push('result = ?')
-    params.push(filters.result)
+    const resultValues: Record<GameResult, string[]> = {
+      win: ['win', '1-0'],
+      loss: ['loss', '0-1'],
+      draw: ['draw', '1/2-1/2']
+    }
+    const values = resultValues[filters.result]
+    conditions.push(`result IN (${values.map(() => '?').join(', ')})`)
+    params.push(...values)
   }
   if (filters.search) {
     conditions.push('(white_player LIKE ? OR black_player LIKE ? OR pgn LIKE ?)')
@@ -302,8 +308,14 @@ export function buildWhere(filters: GameFilters): { where: string; params: unkno
     params.push(like, like, like)
   }
   if (filters.outcome) {
-    conditions.push('outcome = ?')
-    params.push(filters.outcome)
+    const outcomeValues: Record<GameOutcome, string[]> = {
+      win: ['win', '1-0'],
+      loss: ['loss', '0-1'],
+      draw: ['draw', '1/2-1/2']
+    }
+    const values = outcomeValues[filters.outcome]
+    conditions.push(`(outcome IN (${values.map(() => '?').join(', ')}) OR (outcome IS NULL AND result IN (${values.map(() => '?').join(', ')}))`)
+    params.push(...values, ...values)
   }
   if (filters.timeClass) {
     conditions.push('time_class = ?')

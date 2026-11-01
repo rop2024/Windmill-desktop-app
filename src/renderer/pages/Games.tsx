@@ -223,19 +223,22 @@ export default function Games() {
 
       <Panel accent="cyan" label="Games">
         <div className="overflow-x-auto" ref={tableRef} style={{ height: 400, position: 'relative' }}>
-          <table className="min-w-full text-left border-collapse">
-            <thead className="border-b border-border">
-              <tr>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-20">White</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-20">Black</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-16">Result</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-16">Source</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-32">Updated</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted">Opening</th>
-                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right w-20">Action</th>
+          <table className="min-w-full text-left border-collapse table-fixed">
+            <thead className="border-b border-border block w-full">
+              <tr className="table w-full table-fixed">
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[15%]">White</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[15%]">Black</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[10%]">Result</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[10%]">Source</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[15%]">Updated</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted w-[25%]">Opening</th>
+                <th className="px-3 py-2 text-xs font-mono uppercase text-text-muted text-right w-[10%]">Action</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody
+              className="block relative w-full"
+              style={{ height: games.length > 0 ? rowVirtualizer.getTotalSize() : undefined }}
+            >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const game = games[virtualRow.index]
                 return (
@@ -248,6 +251,8 @@ export default function Games() {
                     }}
                     style={{
                       position: 'absolute',
+                      display: 'table',
+                      tableLayout: 'fixed',
                       top: 0,
                       left: 0,
                       width: '100%',
@@ -255,21 +260,21 @@ export default function Games() {
                       transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
-                    <td className="px-3 py-2 text-sm text-text-primary">{game.whitePlayer}</td>
-                    <td className="px-3 py-2 text-sm text-text-primary">{game.blackPlayer}</td>
-                    <td className="px-3 py-2 text-sm">
+                    <td className="px-3 py-2 text-sm text-text-primary w-[15%] truncate">{game.whitePlayer}</td>
+                    <td className="px-3 py-2 text-sm text-text-primary w-[15%] truncate">{game.blackPlayer}</td>
+                    <td className="px-3 py-2 text-sm w-[10%]">
                       <StatusLabel accent={resultAccent(game.outcome ?? 'draw')}>
                         {(game.outcome ?? 'draw').charAt(0).toUpperCase() + (game.outcome ?? 'draw').slice(1)}
                       </StatusLabel>
                     </td>
-                    <td className="px-3 py-2 text-sm text-text-muted font-mono">{game.source}</td>
-                    <td className="px-3 py-2 text-sm text-text-muted font-mono">
+                    <td className="px-3 py-2 text-sm text-text-muted font-mono w-[10%]">{game.source}</td>
+                    <td className="px-3 py-2 text-sm text-text-muted font-mono w-[15%]">
                       {new Date(game.updatedAt).toLocaleDateString()}
                     </td>
-                    <td className="px-3 py-2 text-sm font-sans font-bold text-text-primary truncate max-w-[120px]">
+                    <td className="px-3 py-2 text-sm font-sans font-bold text-text-primary truncate w-[25%]">
                       {game.pgn.slice(0, 40)}...
                     </td>
-                    <td className="px-3 py-2 text-sm text-right">
+                    <td className="px-3 py-2 text-sm text-right w-[10%]">
                       <Link
                         to={`/explorer/${game.id}`}
                         className="text-cyan font-mono uppercase text-xs hover:text-yellow transition-colors"
@@ -289,16 +294,6 @@ export default function Games() {
               )}
             </tbody>
           </table>
-          <div
-            className="absolute bottom-0 left-0 w-full h-[2px]"
-            style={{
-              height: rowVirtualizer.getTotalSize(),
-              width: '100%',
-              position: 'absolute',
-              top: 0,
-              left: 0,
-            }}
-          />
         </div>
       </Panel>
 

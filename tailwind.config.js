@@ -9,15 +9,15 @@ export default {
     extend: {
       colors: {
         // Core surfaces (light mode defaults, dark via .dark class)
-        background: { DEFAULT: '#F3F4F6', dark: '#0B0B10' },
-        sidebar: { DEFAULT: '#EEF2F7', dark: '#0F0F15' },
-        panel: { DEFAULT: '#FFFFFF', dark: '#14141C' },
-        track: { DEFAULT: '#E5E7EB', dark: '#1F1F2A' },
-        border: { DEFAULT: '#D1D5DB', dark: '#2A2A36' },
+        background: 'var(--bg)',
+        sidebar: 'var(--sidebar)',
+        panel: 'var(--panel)',
+        track: 'var(--track)',
+        border: 'var(--border)',
         // Text
-        'text-primary': { DEFAULT: '#111827', dark: '#ECECEC' },
-        'text-muted': { DEFAULT: '#6B7280', dark: '#9A9AA6' },
-        'text-dim': { DEFAULT: '#9CA3AF', dark: '#5D5D6A' },
+        'text-primary': 'var(--text-primary)',
+        'text-muted': 'var(--text-muted)',
+        'text-dim': 'var(--text-dim)',
         // Semantic accents
         cyan: '#00F0FF',
         yellow: '#FCEE09',

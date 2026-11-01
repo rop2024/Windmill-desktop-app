@@ -41,7 +41,7 @@ type ExplorerSearchResult = {
 }
 
 export default function GameExplorer() {
-  const { id } = useParams<{ id: string }>()
+  const { gameId } = useParams<{ gameId: string }>()
   const navigate = useNavigate()
 
   const {
@@ -80,11 +80,11 @@ export default function GameExplorer() {
   const openingDetectorRef = useRef<OpeningDetector | null>(null)
 
   useEffect(() => {
-    if (!id) return
+    if (!gameId) return
     let cancelled = false
     const fetchGame = async () => {
       useExplorerStore.setState({ loading: true, error: null, game: null, roots: [] })
-      const result = await window.api.games.getById(id)
+      const result = await window.api.games.getById(gameId)
       if (!cancelled && result.ok && result.data) {
         loadGame(result.data)
         detectOpening()
@@ -96,7 +96,7 @@ export default function GameExplorer() {
     return () => {
       cancelled = true
     }
-  }, [id, loadGame])
+  }, [gameId, loadGame])
 
   useEffect(() => {
     const unsub = window.api.analysis.onUpdate((update: unknown) => {
@@ -318,10 +318,24 @@ export default function GameExplorer() {
     )
   }
 
-  if (!game || !roots.length) {
+  if (!game) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-text-muted font-mono text-sm">
-        {error ? `Error: ${error}` : 'Game not found.'}
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-text-muted font-mono text-sm">
+        <span>{error ? `Error: ${error}` : 'Game not found.'}</span>
+        <button onClick={() => navigate('/explorer')} className="border border-cyan px-3 py-2 text-cyan text-xs uppercase">
+          Back to explorer
+        </button>
+      </div>
+    )
+  }
+
+  if (!roots.length) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-text-muted font-mono text-sm">
+        <span>{error ? `PGN could not be parsed: ${error}` : 'This game has no playable moves.'}</span>
+        <button onClick={() => navigate('/explorer')} className="border border-cyan px-3 py-2 text-cyan text-xs uppercase">
+          Back to explorer
+        </button>
       </div>
     )
   }
@@ -541,6 +555,12 @@ export default function GameExplorer() {
                 <dd className="text-text-primary font-mono">{info.black}</dd>
               </div>
             </dl>
+          </Panel>
+
+          <Panel accent="yellow" label="PGN" className="mb-4">
+            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs font-mono text-text-primary">
+              {game.pgn || 'No PGN available for this game.'}
+            </pre>
           </Panel>
 
           <Panel accent="cyan" label="Moves" className="mb-4">

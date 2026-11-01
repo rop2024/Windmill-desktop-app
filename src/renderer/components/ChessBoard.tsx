@@ -117,6 +117,7 @@ export function ChessBoard({
         WebkitUserSelect: 'none',
         outline: '2px solid #2A2A36',
         outlineOffset: '-2px',
+        filter: 'drop-shadow(0 0 8px rgba(0, 240, 255, 0.18))',
       }}
       onClick={() => {
         if (!disabled && onSquareClick) onSquareClick(null)
@@ -140,6 +141,13 @@ export function ChessBoard({
         )
       })}
       <defs>
+        <filter id="neon-piece-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="1.5" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
         <marker
           id="arrowhead"
           markerWidth="10"
@@ -208,6 +216,7 @@ export function ChessBoard({
                 cursor: disabled ? 'default' : 'pointer',
                 dominantBaseline: 'middle',
                 userSelect: 'none',
+                filter: 'url(#neon-piece-glow)',
               }}
               onClick={(e) => {
                 e.stopPropagation()

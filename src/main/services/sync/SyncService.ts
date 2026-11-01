@@ -191,6 +191,14 @@ export class SyncService {
                   totalInvalid++
                   continue
                 }
+                const isWhite = onlineGame.white.username.toLowerCase() === username.toLowerCase()
+                game.playerColor = isWhite ? 'w' : 'b'
+                game.playerRating = isWhite ? onlineGame.white.rating : onlineGame.black.rating
+                game.opponent = isWhite ? onlineGame.black.username : onlineGame.white.username
+                game.opponentRating = isWhite ? onlineGame.black.rating : onlineGame.white.rating
+                game.outcome = normalizeOutcome(isWhite ? onlineGame.white.result : onlineGame.black.result)
+                game.timeClass = timeClassFor(onlineGame.time_control)
+                game.playedAt = onlineGame.end_time * 1000
                 if (this.openingDetector && game.root) {
                   const match = this.openingDetector.detect(extractMainLineSan(game.root))
                   if (match) {
@@ -288,4 +296,24 @@ function getArchiveUrlMonthKey(archiveUrl: string): number {
   const match = archiveUrl.match(/\/games\/(\d{4})\/(\d{1,2})\/?$/)
   if (!match) return Number.MIN_SAFE_INTEGER
   return getArchiveMonthKey(Number(match[1]), Number(match[2]))
+}
+
+function normalizeOutcome(result: string): 'win' | 'loss' | 'draw' | null {
+  if (result === 'win') return 'win'
+  if (result === 'checkmated' || result === 'timeout' || result === 'resigned' || result === 'abandoned') return 'loss'
+  if (result === 'draw' || result === 'stalemate' || result === 'repetition' || result === 'insufficient') return 'draw'
+  return null
+}
+
+function timeClassFor(value: string): 'bullet' | 'blitz' | 'rapid' | 'classical' | 'daily' | null {
+  if (value.includes('/')) {
+    const dailySeconds = Number.parseInt(value.split('/')[1], 10)
+    return dailySeconds >= 86400 ? 'daily' : null
+  }
+  const seconds = Number.parseInt(value.split(/[+:-]/)[0], 10)
+  if (!Number.isFinite(seconds)) return null
+  if (seconds < 180) return 'bullet'
+  if (seconds < 600) return 'blitz'
+  if (seconds < 1800) return 'rapid'
+  return 'classical'
 }

@@ -6,7 +6,7 @@ import { logger } from './logger'
 
 export type Theme = 'light' | 'dark' | 'system'
 
-export type BoardTheme = 'wood' | 'marble' | 'blue' | 'green'
+export type BoardTheme = 'cyberpunk'
 
 export type PieceSet = 'classic' | 'neo' | 'alpha' | 'tatiana'
 
@@ -32,7 +32,7 @@ export type AppSettings = {
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'system',
-  boardTheme: 'wood',
+  boardTheme: 'cyberpunk',
   pieceSet: 'classic',
   myUsernames: '',
   dbLocation: '',
@@ -65,6 +65,7 @@ export class SettingsService {
       return {
         ...DEFAULT_SETTINGS,
         ...parsed,
+        boardTheme: 'cyberpunk',
         engine: { ...DEFAULT_SETTINGS.engine, ...(parsed.engine ?? {}) }
       }
     } catch (e) {
