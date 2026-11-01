@@ -618,6 +618,8 @@ declare global {
         onUpdate: (callback: (update: unknown) => void) => () => void
         onError: (callback: (message: string) => void) => () => void
         onProgress: (callback: (progress: unknown) => void) => () => void
+        onGameComplete: (callback: (result: unknown) => void) => () => void
+        onGameError: (callback: (result: unknown) => void) => () => void
       }
       settings: {
         get: () => Promise<Result<AppSettings>>

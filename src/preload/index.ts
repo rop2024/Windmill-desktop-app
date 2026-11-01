@@ -39,6 +39,16 @@ contextBridge.exposeInMainWorld('api', {
       const handler = (_event: unknown, progress: unknown) => callback(progress)
       ipcRenderer.on('analysis:progress', handler)
       return () => ipcRenderer.off('analysis:progress', handler)
+    },
+    onGameComplete: (callback: (result: unknown) => void) => {
+      const handler = (_event: unknown, result: unknown) => callback(result)
+      ipcRenderer.on('analysis:gameComplete', handler)
+      return () => ipcRenderer.off('analysis:gameComplete', handler)
+    },
+    onGameError: (callback: (result: unknown) => void) => {
+      const handler = (_event: unknown, result: unknown) => callback(result)
+      ipcRenderer.on('analysis:gameError', handler)
+      return () => ipcRenderer.off('analysis:gameError', handler)
     }
   },
   settings: {

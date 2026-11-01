@@ -61,33 +61,28 @@ export class EngineProcess extends EventEmitter {
     this.options = options
     this.initializing = true
 
-    await new Promise<void>((resolve, reject) => {
-      this.initResolve = resolve
-      const proc = spawn(this.binary, [], { windowsHide: true })
-      this.proc = proc
+    const proc = spawn(this.binary, [], { windowsHide: true })
+    this.proc = proc
 
-      proc.stdout.on('data', (chunk: Buffer) => this.onData(chunk.toString('utf8')))
-      proc.stderr.on('data', (chunk: Buffer) => {
-        logger.warn('Stockfish stderr', { data: chunk.toString('utf8') })
-      })
-      proc.on('error', (e) => {
-        logger.error('Stockfish spawn error', { error: e.message })
-        this.handleError(new Error(`Failed to start Stockfish: ${e.message}`))
-        reject(e)
-      })
-      proc.on('exit', (code) => {
-        logger.info('Stockfish exited', { code })
-        this.proc = null
-        this.ready = false
-        if (this.initializing && this.initResolve) {
-          this.initResolve = null
-          this.initializing = false
-          reject(new Error(`Stockfish exited with code ${code} during startup`))
-        }
-      })
+    proc.stdout.on('data', (chunk: Buffer) => this.onData(chunk.toString('utf8')))
+    proc.stderr.on('data', (chunk: Buffer) => {
+      logger.warn('Stockfish stderr', { data: chunk.toString('utf8') })
+    })
+    proc.on('error', (e) => {
+      logger.error('Stockfish spawn error', { error: e.message })
+      this.handleError(new Error(`Failed to start Stockfish: ${e.message}`))
+    })
+    proc.on('exit', (code) => {
+      logger.info('Stockfish exited', { code })
+      this.proc = null
+      this.ready = false
+      if (this.initializing) {
+        this.initializing = false
+        this.initResolve = null
+        this.handleError(new Error(`Stockfish exited with code ${code} during startup`))
+      }
     })
 
-    // Send UCI handshake
     this.send('uci')
     await this.waitFor('uciok')
 
@@ -151,15 +146,29 @@ export class EngineProcess extends EventEmitter {
   }
 
   private waitFor(expected: 'uciok' | 'readyok'): Promise<void> {
-    return new Promise((resolve) => {
-      const resolver = () => {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        cleanup()
+        reject(new Error(`Timed out waiting for Stockfish ${expected}`))
+      }, 10000)
+      const cleanup = () => {
+        clearTimeout(timeout)
         this.off('line', listener)
+        this.off('error', errorListener)
+      }
+      const resolver = () => {
+        cleanup()
         resolve()
       }
       const listener = (line: UciLine) => {
         if (line.type === expected) resolver()
       }
+      const errorListener = (error: Error) => {
+        cleanup()
+        reject(error)
+      }
       this.on('line', listener)
+      this.on('error', errorListener)
     })
   }
 

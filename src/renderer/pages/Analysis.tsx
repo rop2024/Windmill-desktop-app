@@ -76,10 +76,14 @@ export default function Analysis() {
     let cancelled = false
     const load = async () => {
       setLoading(true)
+      setPlies([])
+      setError(null)
       try {
         const result = await window.api.analysis.getForGame(gameId)
         if (!cancelled && result.ok) {
           setPlies(result.data.plies)
+        } else if (!cancelled) {
+          setError(result.error.message)
         }
       } finally {
         if (!cancelled) setLoading(false)
@@ -104,8 +108,26 @@ export default function Analysis() {
         setAnalyzing(true)
       }
     })
+    const unsubComplete = window.api.analysis.onGameComplete((result: unknown) => {
+      const ev = result as { gameId?: string }
+      if (ev.gameId !== gameId) return
+      setAnalyzing(false)
+      setProgress(null)
+      void window.api.analysis.getForGame(gameId!).then((analysisResult) => {
+        if (analysisResult.ok) setPlies(analysisResult.data.plies)
+      })
+    })
+    const unsubError = window.api.analysis.onGameError((result: unknown) => {
+      const ev = result as { gameId?: string; error?: string }
+      if (ev.gameId !== gameId) return
+      setAnalyzing(false)
+      setProgress(null)
+      setError(ev.error ?? 'Game analysis failed')
+    })
     return () => {
       unsubProgress()
+      unsubComplete()
+      unsubError()
     }
   }, [gameId])
 
@@ -117,7 +139,7 @@ export default function Analysis() {
     try {
       const result = await window.api.analysis.startGame(gameId)
       if (!result.ok) {
-        setError(String(result.error))
+        setError(result.error.message)
         setAnalyzing(false)
       }
     } catch (e) {
@@ -174,8 +196,8 @@ export default function Analysis() {
           </h1>
         </div>
         <div className="flex items-center gap-3">
-          <PrimaryButton onClick={handleAnalyze} disabled={analyzing || plies.length > 0}>
-            {analyzing ? 'Analyzing…' : plies.length > 0 ? 'Already analyzed' : 'Analyze game'}
+          <PrimaryButton onClick={handleAnalyze} disabled={analyzing}>
+            {analyzing ? 'Analyzing…' : plies.length > 0 ? 'Analyze again' : 'Analyze game'}
           </PrimaryButton>
           <button
             onClick={handleCancel}

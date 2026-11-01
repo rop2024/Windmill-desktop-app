@@ -104,6 +104,12 @@ export class AnalysisQueue extends EventEmitter {
   }
 
   private async analyzeGame(job: AnalysisJob): Promise<GameAnalysisResult> {
+    await engineService.start({
+      threads: job.settings.threads,
+      hash: job.settings.hash,
+      multiPV: job.settings.multiPV
+    })
+
     const moves = await this.getGameMoves(job.gameId)
     if (moves.length === 0) {
       return { gameId: job.gameId, plies: [], accuracyWhite: 0, accuracyBlack: 0 }

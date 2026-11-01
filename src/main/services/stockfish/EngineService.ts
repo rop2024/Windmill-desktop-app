@@ -24,6 +24,14 @@ export class EngineService extends EventEmitter {
   private started = false
 
   async start(options: StockfishOptions = {}): Promise<void> {
+    if (this.started && this.engine?.isReady()) return
+
+    if (this.engine && !this.engine.isReady()) {
+      await this.engine.quit()
+      this.engine = null
+      this.started = false
+    }
+
     if (!this.engine) {
       this.engine = new EngineProcess()
       this.engine.on('info', (info) => {
@@ -38,8 +46,15 @@ export class EngineService extends EventEmitter {
       })
     }
     if (!this.started) {
-      await this.engine.start(options)
-      this.started = true
+      try {
+        await this.engine.start(options)
+        this.started = true
+      } catch (error) {
+        await this.engine.quit()
+        this.engine = null
+        this.started = false
+        throw error
+      }
     }
   }
 
@@ -58,6 +73,9 @@ export class EngineService extends EventEmitter {
 
       const best = result.bestmove.move
       const last = result.infos[result.infos.length - 1]
+      if (!last) {
+        throw new Error('Stockfish returned no analysis information')
+      }
       this.emit('update', { fen, ...last, bestmove: best })
       this.emit('result', { bestmove: best, pv: result.infos.map((i) => i.pv).flat(), score: last.score })
       return { bestmove: best, pv: last.pv, score: last.score }

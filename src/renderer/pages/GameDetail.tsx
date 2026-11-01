@@ -33,6 +33,13 @@ export default function GameDetail() {
         <PrimaryButton onClick={() => navigate(`/explorer/${id}`)} disabled={!id}>
           Open in explorer
         </PrimaryButton>
+        <button
+          onClick={() => navigate(`/analysis/${id}`)}
+          disabled={!id}
+          className="bg-transparent border border-magenta rounded-none px-3 py-2 text-xs font-mono text-magenta uppercase hover:border-cyan disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        >
+          Analyze game
+        </button>
       </div>
     </div>
   )

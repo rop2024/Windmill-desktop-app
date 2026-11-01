@@ -94,6 +94,7 @@ export function parseUciLine(line: string, sideToMove: 'w' | 'b' = 'w'): UciLine
   if (trimmed.startsWith('id ')) return null
   if (trimmed.startsWith('option ')) return null
   if (trimmed.startsWith('Console')) return null
+  if (trimmed.startsWith('Stockfish ')) return null
 
   return { type: 'error', message: trimmed }
 }
