@@ -43,6 +43,9 @@ export default defineConfig({
     }
   },
   renderer: {
+    build: {
+      outDir: 'dist/renderer'
+    },
     resolve: {
       alias: {
         '@renderer': path.resolve('src/renderer'),
