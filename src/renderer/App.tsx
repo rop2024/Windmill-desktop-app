@@ -13,7 +13,6 @@ import Statistics from '@renderer/pages/Statistics'
 import OpeningExplorer from '@renderer/pages/OpeningExplorer'
 import TacticalDetector from '@renderer/pages/TacticalDetector'
 import WeaknessEngine from '@renderer/pages/WeaknessEngine'
-import ReportGenerator from '@renderer/pages/ReportGenerator'
 import Coach from '@renderer/pages/Coach'
 import Board from '@renderer/pages/Board'
 import TrainingPlanner from '@renderer/pages/TrainingPlanner'
@@ -88,7 +87,6 @@ export default function App() {
           <Route path="tactics" element={<TacticalDetector />} />
           <Route path="weaknesses" element={<WeaknessEngine />} />
           <Route path="trainer" element={<PuzzleTrainer />} />
-          <Route path="reports" element={<ReportGenerator />} />
           <Route path="coach" element={<Coach />} />
           <Route path="board" element={<Board />} />
           <Route path="training" element={<TrainingPlanner />} />

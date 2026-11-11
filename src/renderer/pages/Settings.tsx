@@ -32,6 +32,21 @@ type SyncProgress = {
   username?: string | null
 }
 
+type ReportType = 'weekly' | 'monthly' | 'opening' | 'tournament'
+type ReportFormat = 'html' | 'markdown'
+
+const TYPE_LABEL: Record<ReportType, string> = {
+  weekly: 'Weekly Chess Report',
+  monthly: 'Monthly Progress Report',
+  opening: 'Opening Report',
+  tournament: 'Tournament Summary'
+}
+
+const FORMAT_LABEL: Record<ReportFormat, string> = {
+  html: 'HTML (printable to PDF)',
+  markdown: 'Markdown'
+}
+
 export default function Settings() {
   const { theme, setTheme } = useTheme()
   const { boardTheme, pieceSet, setBoardTheme, setPieceSet } = useBoardTheme()
@@ -60,6 +75,12 @@ export default function Settings() {
   const [syncUsername, setSyncUsername] = useState('')
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
+
+  const [reportType, setReportType] = useState<ReportType>('weekly')
+  const [reportFormat, setReportFormat] = useState<ReportFormat>('html')
+  const [reportResult, setReportResult] = useState<{ path: string; type: ReportType; format: ReportFormat; gamesAnalyzed: number } | null>(null)
+  const [reportError, setReportError] = useState<string | null>(null)
+  const [reportGenerating, setReportGenerating] = useState(false)
 
   useEffect(() => {
     window.api.settings
@@ -173,6 +194,24 @@ export default function Settings() {
     setSyncing(false)
     setSyncProgress(null)
   }
+
+  const handleGenerateReport = useCallback(async () => {
+    setReportGenerating(true)
+    setReportError(null)
+    setReportResult(null)
+    try {
+      const res = await window.api.report.generate(reportType, reportFormat, {})
+      if (res.ok) {
+        setReportResult(res.data)
+      } else {
+        setReportError(res.error?.message ?? 'Failed to generate report')
+      }
+    } catch (e) {
+      setReportError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setReportGenerating(false)
+    }
+  }, [reportType, reportFormat])
 
   const formatDate = (ts: number | null): string => {
     if (!ts) return 'never'
@@ -426,6 +465,88 @@ export default function Settings() {
           </div>
         </Panel>
       )}
+
+      <Panel accent="magenta" label="Reports">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-mono text-text-muted">Report type</span>
+              <div className="flex gap-1">
+                {(['weekly', 'monthly', 'opening', 'tournament'] as ReportType[]).map((t) => (
+                  <FilterChip
+                    key={t}
+                    selected={reportType === t}
+                    onClick={() => setReportType(t)}
+                  >
+                    {TYPE_LABEL[t]}
+                  </FilterChip>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="text-xs font-mono text-text-muted">Export format</span>
+              <div className="flex gap-1">
+                {(['html', 'markdown'] as ReportFormat[]).map((f) => (
+                  <FilterChip
+                    key={f}
+                    selected={reportFormat === f}
+                    onClick={() => setReportFormat(f)}
+                  >
+                    {FORMAT_LABEL[f]}
+                  </FilterChip>
+                ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 pt-1">
+              <span className="text-xs font-mono text-text-muted">Scope</span>
+              <span className="text-[10px] font-mono text-text-muted">All games (filters coming soon)</span>
+            </div>
+            <button
+              onClick={handleGenerateReport}
+              disabled={reportGenerating}
+              className="bg-transparent border border-cyan text-cyan font-mono text-xs uppercase px-4 py-2.5 rounded-none hover:bg-cyan/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {reportGenerating ? 'Generating…' : 'Generate & Save Report'}
+            </button>
+            {reportError && (
+              <div className="mt-2 text-xs font-mono text-pink">{reportError}</div>
+            )}
+            {reportResult && (
+              <div className="mt-2 flex items-center gap-2 text-xs font-mono text-green">
+                <span>Saved to:</span>
+                <span className="truncate max-w-[200px]" title={reportResult.path}>{reportResult.path}</span>
+              </div>
+            )}
+          </div>
+
+          <div className="flex-none lg:w-1/3">
+            <Panel accent="orange" label="Last report">
+              {reportResult ? (
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                    <span className="text-xs font-mono text-text-muted">Type</span>
+                    <span className="text-xs font-mono text-text-primary">{TYPE_LABEL[reportResult.type]}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                    <span className="text-xs font-mono text-text-muted">Format</span>
+                    <span className="text-xs font-mono text-text-primary">{reportResult.format}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                    <span className="text-xs font-mono text-text-muted">Games analyzed</span>
+                    <span className="text-xs font-mono text-text-primary">{reportResult.gamesAnalyzed}</span>
+                  </div>
+                  <div className="flex justify-between items-center px-2 py-1.5">
+                    <span className="text-xs font-mono text-text-muted">Saved at</span>
+                    <span className="text-xs font-mono text-text-primary truncate max-w-xs" title={reportResult.path}>{reportResult.path}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-text-muted text-xs font-mono py-2 text-center">No report generated yet.</div>
+              )}
+            </Panel>
+          </div>
+        </div>
+      </Panel>
 
       <Panel accent="cyan" label="Database">
         <div className="space-y-2">

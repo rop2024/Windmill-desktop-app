@@ -18,7 +18,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/tactics', label: 'Tactics', match: (p) => p.startsWith('/tactics') },
   { to: '/weaknesses', label: 'Weaknesses', match: (p) => p.startsWith('/weaknesses') },
   { to: '/trainer', label: 'Trainer', match: (p) => p.startsWith('/trainer') },
-  { to: '/reports', label: 'Reports', match: (p) => p.startsWith('/reports') },
   { to: '/coach', label: 'Coach', match: (p) => p.startsWith('/coach') },
   { to: '/board', label: 'Board', match: (p) => p.startsWith('/board') },
   { to: '/training', label: 'Training', match: (p) => p.startsWith('/training') },
