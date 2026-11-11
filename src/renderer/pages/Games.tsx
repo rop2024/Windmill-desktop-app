@@ -139,6 +139,15 @@ export default function Games() {
     }
   }
 
+  const displayOutcome = (g: { outcome?: string | null | undefined; result: string; playerColor?: string | null }): string => {
+    if (g.outcome) return g.outcome
+    // Fall back to deriving from the raw PGN result + player color
+    if (g.result === '1/2-1/2') return 'draw'
+    if (g.result === '1-0') return g.playerColor === 'w' ? 'win' : 'loss'
+    if (g.result === '0-1') return g.playerColor === 'b' ? 'win' : 'loss'
+    return '—'
+  }
+
   const pages = Math.ceil(total / pageSize) || 1
 
   return (
@@ -263,8 +272,8 @@ export default function Games() {
                     <td className="px-3 py-2 text-sm text-text-primary w-[15%] truncate">{game.whitePlayer}</td>
                     <td className="px-3 py-2 text-sm text-text-primary w-[15%] truncate">{game.blackPlayer}</td>
                     <td className="px-3 py-2 text-sm w-[10%]">
-                      <StatusLabel accent={resultAccent(game.outcome ?? 'draw')}>
-                        {(game.outcome ?? 'draw').charAt(0).toUpperCase() + (game.outcome ?? 'draw').slice(1)}
+                      <StatusLabel accent={resultAccent(displayOutcome(game))}>
+                        {displayOutcome(game).charAt(0).toUpperCase() + displayOutcome(game).slice(1)}
                       </StatusLabel>
                     </td>
                     <td className="px-3 py-2 text-sm text-text-muted font-mono w-[10%]">{game.source}</td>
