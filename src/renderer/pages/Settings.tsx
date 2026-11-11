@@ -76,6 +76,12 @@ export default function Settings() {
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState<string | null>(null)
 
+  const [benchmarkStatus, setBenchmarkStatus] = useState<'idle' | 'analyzing' | 'error'>('idle')
+  const [benchmarkBestmove, setBenchmarkBestmove] = useState<string | null>(null)
+  const [benchmarkScore, setBenchmarkScore] = useState<string | null>(null)
+  const [benchmarkRunning, setBenchmarkRunning] = useState(false)
+  const [benchmarkError, setBenchmarkError] = useState<string | null>(null)
+
   const [reportType, setReportType] = useState<ReportType>('weekly')
   const [reportFormat, setReportFormat] = useState<ReportFormat>('html')
   const [reportResult, setReportResult] = useState<{ path: string; type: ReportType; format: ReportFormat; gamesAnalyzed: number } | null>(null)
@@ -194,6 +200,41 @@ export default function Settings() {
     setSyncing(false)
     setSyncProgress(null)
   }
+
+  const handleRunBenchmark = useCallback(async () => {
+    setBenchmarkRunning(true)
+    setBenchmarkError(null)
+    setBenchmarkStatus('analyzing')
+    try {
+      const result = await window.api.analysis.position('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1', {
+        depth: settings.engine.depth,
+        movetime: settings.engine.movetime
+      })
+      if (result.ok) {
+        setBenchmarkBestmove(result.data.bestmove ?? '—')
+        setBenchmarkScore(result.data.score ? (result.data.score.type === 'cp' ? `${result.data.score.value}cp` : `Mate ${result.data.score.value}`) : '—')
+      } else {
+        setBenchmarkError(result.error?.message ?? 'Benchmark failed')
+        setBenchmarkStatus('error')
+      }
+    } catch (e) {
+      setBenchmarkError(e instanceof Error ? e.message : String(e))
+      setBenchmarkStatus('error')
+    } finally {
+      setBenchmarkRunning(false)
+      setBenchmarkStatus('idle')
+    }
+  }, [settings.engine.depth, settings.engine.movetime])
+
+  const handleStopAnalysis = useCallback(async () => {
+    try {
+      await window.api.analysis.stop()
+      setBenchmarkStatus('idle')
+      setBenchmarkRunning(false)
+    } catch (e) {
+      setBenchmarkError(e instanceof Error ? e.message : String(e))
+    }
+  }, [])
 
   const handleGenerateReport = useCallback(async () => {
     setReportGenerating(true)
@@ -544,6 +585,56 @@ export default function Settings() {
                 <div className="text-text-muted text-xs font-mono py-2 text-center">No report generated yet.</div>
               )}
             </Panel>
+          </div>
+        </div>
+      </Panel>
+
+      <Panel accent="magenta" label="Engine benchmark">
+        <div className="space-y-3">
+          <PrimaryButton
+            onClick={handleRunBenchmark}
+            disabled={benchmarkRunning}
+            className="w-full"
+          >
+            {benchmarkRunning ? 'Analyzing…' : 'Run benchmark'}
+          </PrimaryButton>
+          <PrimaryButton
+            onClick={handleStopAnalysis}
+            disabled={benchmarkStatus !== 'analyzing'}
+            className="w-full border border-pink text-pink hover:bg-pink/10"
+          >
+            Stop
+          </PrimaryButton>
+          {benchmarkBestmove && (
+            <div className="grid grid-cols-3 gap-3 text-xs font-mono">
+              <div className="bg-track border border-border rounded-none px-3 py-2">
+                <span className="text-text-dim uppercase">Best move</span>
+                <span className="text-text-primary">{benchmarkBestmove}</span>
+              </div>
+              <div className="bg-track border border-border rounded-none px-3 py-2">
+                <span className="text-text-dim uppercase">Score</span>
+                <span className="text-text-primary">{benchmarkScore}</span>
+              </div>
+            </div>
+          )}
+          {benchmarkError && (
+            <div className="text-pink text-xs font-mono">{benchmarkError}</div>
+          )}
+        </div>
+      </Panel>
+
+      <Panel accent="cyan" label="Analysis">
+        <div className="space-y-3">
+          <span className="text-text-muted text-xs font-mono uppercase block mb-1">
+            Game analysis is run per-game from the Games / Explorer views.
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-filter uppercase text-text-muted text-xs">Engine</span>
+            <StatusLabel accent="green">Stockfish · Ready</StatusLabel>
+          </div>
+          <div className="text-text-dim text-xs font-mono">
+            <p>Open a game in Games or Explorer, then run analysis to see ply-by-ply evaluations.</p>
+            <p>Finding states: GOOD · QUEUED · READY</p>
           </div>
         </div>
       </Panel>

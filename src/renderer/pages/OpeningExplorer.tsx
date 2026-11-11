@@ -163,8 +163,8 @@ export default function OpeningExplorer() {
             </h1>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link to="/statistics" className="bg-transparent border border-border font-mono text-filter uppercase px-3 py-2 rounded-none hover:border-cyan transition-colors">
-              Statistics
+            <Link to="/" className="bg-transparent border border-border font-mono text-filter uppercase px-3 py-2 rounded-none hover:border-cyan transition-colors">
+              Dashboard
             </Link>
           </div>
         </div>

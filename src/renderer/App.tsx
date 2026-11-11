@@ -5,19 +5,14 @@ import Games from '@renderer/pages/Games'
 import GameNew from '@renderer/pages/GameNew'
 import GameDetail from '@renderer/pages/GameDetail'
 import Settings from '@renderer/pages/Settings'
-import Engine from '@renderer/pages/Engine'
 import GameExplorer from '@renderer/pages/GameExplorer'
 import ExplorerLanding from '@renderer/pages/ExplorerLanding'
-import Analysis from '@renderer/pages/Analysis'
-import Statistics from '@renderer/pages/Statistics'
 import OpeningExplorer from '@renderer/pages/OpeningExplorer'
 import TacticalDetector from '@renderer/pages/TacticalDetector'
 import WeaknessEngine from '@renderer/pages/WeaknessEngine'
 import Coach from '@renderer/pages/Coach'
 import Board from '@renderer/pages/Board'
 import TrainingPlanner from '@renderer/pages/TrainingPlanner'
-import Achievements from '@renderer/pages/Achievements'
-import Timeline from '@renderer/pages/Timeline'
 import Search from '@renderer/pages/Search'
 import RepertoireBuilder from '@renderer/pages/RepertoireBuilder'
 import KnowledgeGraph from '@renderer/pages/KnowledgeGraph'
@@ -40,12 +35,6 @@ function KeyboardShortcuts() {
       ctrlOrMeta: true,
       description: 'Go to settings',
       handler: () => navigate('/settings')
-    },
-    {
-      key: 'a',
-      ctrlOrMeta: true,
-      description: 'Go to statistics',
-      handler: () => navigate('/statistics')
     },
     {
       key: 'Escape',
@@ -80,8 +69,6 @@ export default function App() {
           <Route path="games/new" element={<GameNew />} />
           <Route path="games/:id" element={<GameDetail />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="engine" element={<Engine />} />
-          <Route path="statistics" element={<Statistics />} />
           <Route path="openings" element={<OpeningExplorer />} />
           <Route path="openings/:opening" element={<OpeningExplorer />} />
           <Route path="tactics" element={<TacticalDetector />} />
@@ -90,14 +77,11 @@ export default function App() {
           <Route path="coach" element={<Coach />} />
           <Route path="board" element={<Board />} />
           <Route path="training" element={<TrainingPlanner />} />
-          <Route path="achievements" element={<Achievements />} />
-          <Route path="timeline" element={<Timeline />} />
           <Route path="search" element={<Search />} />
           <Route path="repertoire" element={<RepertoireBuilder />} />
           <Route path="graph" element={<KnowledgeGraph />} />
           <Route path="explorer" element={<ExplorerLanding />} />
           <Route path="explorer/:gameId" element={<GameExplorer />} />
-          <Route path="analysis/:gameId" element={<Analysis />} />
         </Route>
       </Routes>
     </Router>
