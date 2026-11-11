@@ -5,8 +5,18 @@ import { initDB, closeDB } from '@main/services/database/connection'
 import { registerHandlers, setProgressSender, setSyncProgressSender, setAnalysisWebContents } from '@main/ipc'
 import { runMigrations } from '@main/services/database/migrator'
 import { engineService } from '@main/services/stockfish/EngineService'
+import { SyncService } from '@main/services/sync/SyncService'
+import { settingsService } from '@main/services/settings'
 
 let mainWindow: BrowserWindow | null = null
+let timedSyncTimer: ReturnType<typeof setInterval> | null = null
+
+function stopTimedSync(): void {
+  if (timedSyncTimer) {
+    clearInterval(timedSyncTimer)
+    timedSyncTimer = null
+  }
+}
 
 const menuTemplate: MenuItemConstructorOptions[] = [
   {
@@ -188,6 +198,36 @@ app.whenReady().then(async () => {
 
   setAnalysisWebContents(mainWindow!.webContents)
 
+  // Timed/auto sync: runs periodically when autoSync is enabled and a username is set
+  const SYNC_INTERVAL_MS = 30 * 60 * 1000 // 30 minutes
+  let isSyncing = false
+
+  async function runTimedSync(): Promise<void> {
+    if (isSyncing) return
+    const settings = await settingsService.get()
+    if (!settings.autoSync || !settings.chessComUsername) return
+    isSyncing = true
+    try {
+      const sync = new SyncService((progress) => {
+        if (mainWindow) mainWindow.webContents.send('sync:progress', { ...progress, username: settings.chessComUsername })
+      })
+      await sync.sync(settings.chessComUsername)
+    } catch {
+      // timed sync failures are non-fatal; log and continue
+    } finally {
+      isSyncing = false
+    }
+  }
+
+  function startTimedSync(): void {
+    if (timedSyncTimer) clearInterval(timedSyncTimer)
+    timedSyncTimer = setInterval(runTimedSync, SYNC_INTERVAL_MS)
+    // Run once shortly after startup
+    setTimeout(runTimedSync, 5000)
+  }
+
+  startTimedSync()
+
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
@@ -199,6 +239,7 @@ app.on('window-all-closed', async () => {
 })
 
 app.on('before-quit', async () => {
+  stopTimedSync()
   await closeDB()
   await engineService.quit()
 })

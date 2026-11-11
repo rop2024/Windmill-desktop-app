@@ -59,6 +59,8 @@ contextBridge.exposeInMainWorld('api', {
       pieceSet?: 'classic' | 'neo' | 'alpha' | 'tatiana'
       myUsernames?: string
       autoSync?: boolean
+      chessComUsername?: string
+      chessComLastSyncAt?: number | null
       engine?: {
         depth?: number
         movetime?: number

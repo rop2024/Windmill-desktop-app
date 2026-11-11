@@ -319,6 +319,8 @@ export function registerHandlers(): void {
       pieceSet: z.enum(['classic', 'neo', 'alpha', 'tatiana']).optional(),
       myUsernames: z.string().optional(),
       autoSync: z.boolean().optional(),
+      chessComUsername: z.string().optional(),
+      chessComLastSyncAt: z.number().nullable().optional(),
       engine: z.object({
         depth: z.number().min(1).max(99).optional(),
         movetime: z.number().min(100).max(600000).optional(),

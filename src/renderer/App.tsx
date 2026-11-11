@@ -5,7 +5,6 @@ import Games from '@renderer/pages/Games'
 import GameNew from '@renderer/pages/GameNew'
 import GameDetail from '@renderer/pages/GameDetail'
 import Settings from '@renderer/pages/Settings'
-import Sync from '@renderer/pages/Sync'
 import Engine from '@renderer/pages/Engine'
 import GameExplorer from '@renderer/pages/GameExplorer'
 import ExplorerLanding from '@renderer/pages/ExplorerLanding'
@@ -82,7 +81,6 @@ export default function App() {
           <Route path="games/new" element={<GameNew />} />
           <Route path="games/:id" element={<GameDetail />} />
           <Route path="settings" element={<Settings />} />
-          <Route path="sync" element={<Sync />} />
           <Route path="engine" element={<Engine />} />
           <Route path="statistics" element={<Statistics />} />
           <Route path="openings" element={<OpeningExplorer />} />

@@ -1,15 +1,36 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { AppSettings } from '@shared/game'
 import { Panel } from '../components/ui/Panel'
+import { KpiCard } from '../components/ui/KpiCard'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
-import { FilterChip } from '../components/ui/FilterChip'
+import { ProgressBar } from '../components/ui/ProgressBar'
 import { StatusLabel } from '../components/ui/StatusLabel'
+import { FilterChip } from '../components/ui/FilterChip'
 import { useTheme } from '../context/ThemeContext'
 import { useBoardTheme } from '../context/BoardThemeContext'
 
 const THEME_OPTIONS = ['system', 'dark', 'light'] as const
 const BOARD_THEME_OPTIONS = ['cyberpunk'] as const
 const PIECE_SET_OPTIONS = ['classic', 'neo', 'alpha', 'tatiana'] as const
+
+type SyncStatus = {
+  username: string | null
+  lastSyncAt: number | null
+  totalGames: number
+  onlineGames: number
+}
+
+type SyncProgress = {
+  stage: string
+  processed: number
+  total: number
+  found: number
+  imported: number
+  duplicates: number
+  invalid: number
+  currentMonth?: string
+  username?: string | null
+}
 
 export default function Settings() {
   const { theme, setTheme } = useTheme()
@@ -29,6 +50,17 @@ export default function Settings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>({
+    username: null,
+    lastSyncAt: null,
+    totalGames: 0,
+    onlineGames: 0
+  })
+  const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null)
+  const [syncUsername, setSyncUsername] = useState('')
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
+
   useEffect(() => {
     window.api.settings
       .get()
@@ -38,26 +70,48 @@ export default function Settings() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Apply theme changes immediately
   useEffect(() => {
     if (!loading && settings.theme !== theme) {
       setTheme(settings.theme as 'light' | 'dark' | 'system')
     }
   }, [settings.theme, theme, setTheme, loading])
 
-  // Apply board theme changes immediately
   useEffect(() => {
     if (!loading && settings.boardTheme !== boardTheme) {
       setBoardTheme(settings.boardTheme)
     }
   }, [settings.boardTheme, boardTheme, setBoardTheme, loading])
 
-  // Apply piece set changes immediately
   useEffect(() => {
     if (!loading && settings.pieceSet !== pieceSet) {
       setPieceSet(settings.pieceSet)
     }
   }, [settings.pieceSet, pieceSet, setPieceSet, loading])
+
+  const loadSyncStatus = useCallback(async () => {
+    try {
+      const result = await window.api.sync.status()
+      if (result.ok) setSyncStatus(result.data)
+    } catch {
+      // ignore
+    }
+  }, [])
+
+  useEffect(() => {
+    loadSyncStatus()
+  }, [loadSyncStatus])
+
+  useEffect(() => {
+    const unsub = window.api.sync.onProgress((p: unknown) => {
+      const progress = p as SyncProgress
+      setSyncProgress(progress)
+      setSyncing(progress.stage !== 'done' && progress.stage !== 'idle' && progress.stage !== 'error')
+      if (progress.stage === 'done' || progress.stage === 'idle' || progress.stage === 'error') {
+        loadSyncStatus()
+      }
+    })
+    return () => unsub()
+  }, [loadSyncStatus])
 
   const handleChange = useCallback(
     (key: keyof AppSettings, value: string | boolean) => {
@@ -91,6 +145,38 @@ export default function Settings() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const handleSync = async () => {
+    setSyncError(null)
+    setSyncProgress(null)
+    const user = syncUsername.trim() || syncStatus.username || settings.chessComUsername
+    if (!user) {
+      setSyncError('Enter a Chess.com username first')
+      return
+    }
+    setSyncing(true)
+    try {
+      const result = await window.api.sync.start(user)
+      if (!result.ok) {
+        setSyncError(result.error.message)
+        setSyncing(false)
+      }
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : String(e))
+      setSyncing(false)
+    }
+  }
+
+  const handleCancel = async () => {
+    await window.api.sync.cancel()
+    setSyncing(false)
+    setSyncProgress(null)
+  }
+
+  const formatDate = (ts: number | null): string => {
+    if (!ts) return 'never'
+    return new Date(ts).toLocaleString()
   }
 
   if (loading) {
@@ -212,6 +298,21 @@ export default function Settings() {
             />
             <span className="text-text-dim text-xs font-mono">Comma-separated list of your usernames for statistics.</span>
           </div>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-filter uppercase text-text-muted text-xs">Chess.com username</span>
+            <input
+              type="text"
+              value={syncUsername}
+              onChange={(e) => {
+                setSyncUsername(e.target.value)
+                setSettings((prev) => ({ ...prev, chessComUsername: e.target.value }))
+                setSaved(false)
+              }}
+              placeholder="e.g. hikaru"
+              className="w-full bg-panel border border-border rounded-none px-3 py-2 text-xs font-mono text-text-primary focus:border-cyan focus:outline-none focus:ring-0"
+            />
+            <span className="text-text-dim text-xs font-mono">Used for automatic syncing of online games.</span>
+          </div>
           <div className="flex items-center gap-3">
             <input
               type="checkbox"
@@ -220,9 +321,111 @@ export default function Settings() {
               className="w-4 h-4 bg-panel border border-border rounded-none text-yellow accent-yellow focus:ring-cyan"
             />
             <label className="text-text-primary font-mono text-sm uppercase">Auto-sync games</label>
+            <span className="text-text-dim text-xs font-mono">(every 30 minutes)</span>
           </div>
         </div>
       </Panel>
+
+      <Panel accent="cyan" label="Sync status">
+        <div className="space-y-3">
+          <div className="flex gap-3">
+            <PrimaryButton onClick={handleSync} disabled={syncing || (!syncUsername.trim() && !syncStatus.username && !settings.chessComUsername)}>
+              {syncing ? 'Syncing…' : 'Sync now'}
+            </PrimaryButton>
+            <button
+              onClick={handleCancel}
+              disabled={!syncing}
+              className="bg-transparent border border-border rounded-none px-3 py-2 text-xs font-mono text-cyan uppercase hover:border-cyan focus-visible:outline-2 focus-visible:outline-cyan disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+          {syncError && (
+            <div className="text-pink text-xs font-mono">{syncError}</div>
+          )}
+          <div className="flex justify-between items-center">
+            <span className="text-text-muted font-mono uppercase text-xs">Status</span>
+            <StatusLabel accent={syncing ? 'magenta' : syncStatus.username ? 'green' : 'pink'}>
+              {syncing ? 'SYNCING…' : syncStatus.username ? 'CONNECTED' : 'DISCONNECTED'}
+            </StatusLabel>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-text-muted font-mono uppercase text-xs">Last sync</span>
+            <span className="text-text-primary font-mono">{formatDate(syncStatus.lastSyncAt)}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-text-muted font-mono uppercase text-xs">Source</span>
+            <span className="text-text-primary font-mono">Chess.com → chess.db</span>
+          </div>
+          {syncProgress && syncProgress.stage !== 'done' && syncProgress.stage !== 'idle' && syncProgress.stage !== 'error' && (
+            <div>
+              <div className="flex justify-between text-xs mb-1">
+                <span className="text-text-muted font-mono uppercase">Progress</span>
+                <span className="text-text-primary font-mono">
+                  {syncProgress.processed} / {syncProgress.total}
+                </span>
+              </div>
+              {syncProgress.currentMonth && (
+                <span className="text-text-dim text-xs font-mono block mb-1">
+                  {syncProgress.currentMonth}
+                </span>
+              )}
+              <ProgressBar
+                value={syncProgress.total > 0 ? (syncProgress.processed / syncProgress.total) * 100 : 0}
+                accent="cyan"
+              />
+            </div>
+          )}
+        </div>
+      </Panel>
+
+      <div className="wm-grid-4 grid grid-cols-1 md:grid-cols-4 gap-3">
+        <KpiCard accent="cyan" value={syncStatus.totalGames.toLocaleString()} label="Total games" />
+        <KpiCard
+          accent="green"
+          value={syncStatus.onlineGames.toLocaleString()}
+          label="From Chess.com"
+          sub="synced games"
+        />
+        <KpiCard accent="magenta" value={syncStatus.username || '—'} label="Chess.com user" />
+        <KpiCard
+          accent="yellow"
+          value={formatDate(syncStatus.lastSyncAt)}
+          label="Last sync"
+          sub="timestamp"
+        />
+      </div>
+
+      {syncProgress && syncProgress.stage === 'error' && syncError && (
+        <Panel accent="pink" label="Sync error">
+          <div className="text-pink text-xs font-mono">{syncError}</div>
+        </Panel>
+      )}
+
+      {syncProgress && (syncProgress.stage === 'done' || syncProgress.imported > 0 || syncProgress.duplicates > 0) && (
+        <Panel accent="green" label="Sync result">
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-text-muted font-mono uppercase">Found</span>
+              <span className="text-text-primary font-mono">{syncProgress.found}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-text-muted font-mono uppercase">Imported</span>
+              <span className="text-green font-mono font-bold">{syncProgress.imported}</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span className="text-text-muted font-mono uppercase">Duplicates skipped</span>
+              <span className="text-yellow font-mono font-bold">{syncProgress.duplicates}</span>
+            </div>
+            {syncProgress.invalid > 0 && (
+              <div className="flex justify-between text-xs">
+                <span className="text-text-muted font-mono uppercase">Invalid</span>
+                <span className="text-pink font-mono font-bold">{syncProgress.invalid}</span>
+              </div>
+            )}
+          </div>
+        </Panel>
+      )}
 
       <Panel accent="cyan" label="Database">
         <div className="space-y-2">

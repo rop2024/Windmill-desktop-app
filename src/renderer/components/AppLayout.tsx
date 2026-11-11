@@ -27,7 +27,6 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/search', label: 'Search', match: (p) => p.startsWith('/search') },
   { to: '/repertoire', label: 'Repertoire', match: (p) => p.startsWith('/repertoire') },
   { to: '/graph', label: 'Graph', match: (p) => p.startsWith('/graph') },
-  { to: '/sync', label: 'Sync', match: (p) => p.startsWith('/sync') },
   { to: '/settings', label: 'Settings', match: (p) => p.startsWith('/settings') },
 ]
 
