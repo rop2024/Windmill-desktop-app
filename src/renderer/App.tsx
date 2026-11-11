@@ -16,8 +16,7 @@ import TacticalDetector from '@renderer/pages/TacticalDetector'
 import WeaknessEngine from '@renderer/pages/WeaknessEngine'
 import ReportGenerator from '@renderer/pages/ReportGenerator'
 import Coach from '@renderer/pages/Coach'
-import BoardOfFame from '@renderer/pages/BoardOfFame'
-import BoardOfShame from '@renderer/pages/BoardOfShame'
+import Board from '@renderer/pages/Board'
 import TrainingPlanner from '@renderer/pages/TrainingPlanner'
 import Achievements from '@renderer/pages/Achievements'
 import Timeline from '@renderer/pages/Timeline'
@@ -93,8 +92,7 @@ export default function App() {
           <Route path="trainer" element={<PuzzleTrainer />} />
           <Route path="reports" element={<ReportGenerator />} />
           <Route path="coach" element={<Coach />} />
-          <Route path="fame" element={<BoardOfFame />} />
-          <Route path="shame" element={<BoardOfShame />} />
+          <Route path="board" element={<Board />} />
           <Route path="training" element={<TrainingPlanner />} />
           <Route path="achievements" element={<Achievements />} />
           <Route path="timeline" element={<Timeline />} />
