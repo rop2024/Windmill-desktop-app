@@ -12,6 +12,7 @@ import m011 from './migrations/011_puzzle_trainer.sql?raw'
 import m012 from './migrations/012_achievements.sql?raw'
 import m020 from './migrations/020_repertoire.sql?raw'
 import m021 from './migrations/021_game_moves_columns.sql?raw'
+import m022 from './migrations/022_game_accuracies.sql?raw'
 import { getDB } from './connection'
 import { logger } from '../logger'
 
@@ -31,7 +32,8 @@ const migrations: Migration[] = [
   { version: 11, sql: m011 as unknown as string },
   { version: 12, sql: m012 as unknown as string },
   { version: 20, sql: m020 as unknown as string },
-  { version: 21, sql: m021 as unknown as string }
+  { version: 21, sql: m021 as unknown as string },
+  { version: 22, sql: m022 as unknown as string }
 ]
 
 export async function runMigrations(): Promise<void> {

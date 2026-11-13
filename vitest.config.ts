@@ -6,7 +6,8 @@ export default defineConfig({
     alias: {
       '@pgn': path.resolve('src/pgn'),
       '@openings': path.resolve('src/openings'),
-      '@stats': path.resolve('src/renderer/stats')
+      '@stats': path.resolve('src/renderer/stats'),
+      '@main': path.resolve('src/main')
     }
   },
   test: {

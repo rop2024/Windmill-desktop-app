@@ -17,6 +17,7 @@ export type ParsedGame = {
   outcome?: string | null
   timeClass?: string | null
   playedAt?: number | null
+  accuracies?: { white: number; black: number } | null
 }
 
 export type PgnError = {

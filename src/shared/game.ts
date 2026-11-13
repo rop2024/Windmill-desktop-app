@@ -26,6 +26,7 @@ export type Game = {
   outcome?: GameOutcome | null
   timeClass?: TimeClass | null
   playedAt?: number | null
+  accuracies?: { white: number; black: number } | null
 }
 
 export type GameFilters = {

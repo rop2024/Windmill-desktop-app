@@ -201,13 +201,27 @@ export class SyncService {
                 game.outcome = normalizeOutcome(isWhite ? onlineGame.white.result : onlineGame.black.result)
                 game.timeClass = timeClassFor(onlineGame.time_control)
                 game.playedAt = onlineGame.end_time * 1000
-                if (this.openingDetector && game.root) {
+
+                // Use Chess.com's precomputed opening/ECO data when available,
+                // falling back to local detection only when missing.
+                if (onlineGame.eco) {
+                  game.headers.set('ECO', onlineGame.eco)
+                }
+                if (onlineGame.opening) {
+                  game.headers.set('Opening', onlineGame.opening)
+                }
+                if (!onlineGame.eco && !onlineGame.opening && this.openingDetector && game.root) {
                   const match = this.openingDetector.detect(extractMainLineSan(game.root))
                   if (match) {
                     game.headers.set('ECO', match.eco)
                     game.headers.set('Opening', match.name)
                     if (match.variation) game.headers.set('Variation', match.variation)
                   }
+                }
+
+                // Preserve Chess.com's move accuracies for statistics.
+                if (onlineGame.accuracies) {
+                  game.accuracies = onlineGame.accuracies
                 }
                 const result = this.repo.insertGame(game)
                 if (!result.ok) throw new Error(String(result.error))
@@ -303,10 +317,11 @@ function getArchiveUrlMonthKey(archiveUrl: string): number {
   return getArchiveMonthKey(Number(match[1]), Number(match[2]))
 }
 
-function normalizeOutcome(result: string): 'win' | 'loss' | 'draw' | null {
+export function normalizeOutcome(result: string): 'win' | 'loss' | 'draw' | null {
   if (result === 'win') return 'win'
   if (result === 'checkmated' || result === 'timeout' || result === 'resigned' || result === 'abandoned') return 'loss'
-  if (result === 'draw' || result === 'stalemate' || result === 'repetition' || result === 'insufficient') return 'draw'
+  // All Chess.com draw result codes
+  if (result === 'draw' || result === 'stalemate' || result === 'repetition' || result === 'insufficient' || result === 'agreed' || result === '50move' || result === 'timevsinsufficient') return 'draw'
   return null
 }
 

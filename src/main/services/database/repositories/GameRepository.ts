@@ -32,6 +32,7 @@ function gameRowToGame(row: {
   outcome?: string | null
   time_class?: string | null
   played_at?: number | null
+  accuracies?: string | null
 }): GameRow {
   return {
     id: row.id,
@@ -49,7 +50,8 @@ function gameRowToGame(row: {
     opponentRating: row.opponent_rating ?? undefined,
     outcome: (row.outcome as GameOutcome | null) ?? undefined,
     timeClass: (row.time_class as TimeClass | null) ?? undefined,
-    playedAt: row.played_at ?? undefined
+    playedAt: row.played_at ?? undefined,
+    accuracies: row.accuracies ? JSON.parse(row.accuracies) : null
   }
 }
 
@@ -78,10 +80,11 @@ export class GameRepository {
       const pgn = serializePgn(parsed)
       const now = Date.now()
       const id = crypto.randomUUID()
+      const accuracies = parsed.accuracies ? JSON.stringify(parsed.accuracies) : null
 
       const tx = this.db.transaction(() => {
         this.db.prepare(
-          'INSERT INTO games (id, white_player, black_player, result, pgn, source, created_at, updated_at, external_id, player_color, player_rating, opponent, opponent_rating, outcome, time_class, played_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          'INSERT INTO games (id, white_player, black_player, result, pgn, source, created_at, updated_at, external_id, player_color, player_rating, opponent, opponent_rating, outcome, time_class, played_at, accuracies) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
         ).run(
           id,
           whitePlayer,
@@ -98,7 +101,8 @@ export class GameRepository {
           parsed.opponentRating ?? null,
           parsed.outcome ?? null,
           parsed.timeClass ?? null,
-          parsed.playedAt ?? now
+          parsed.playedAt ?? now,
+          accuracies
         )
 
         if (parsed.root) {
