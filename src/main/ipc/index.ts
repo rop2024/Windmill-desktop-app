@@ -148,6 +148,39 @@ export function registerHandlers(): void {
     return { ok: true, data: { version: row.version ?? 0 } }
   })
 
+  handle(
+    'database.reset',
+    z.object({}),
+    async () => {
+      const tables = [
+        'game_tactics',
+        'engine_analysis',
+        'puzzle_solves',
+        'puzzle_schedule',
+        'puzzles',
+        'user_achievements',
+        'rule_flags',
+        'rule_counters',
+        'repertoire_lines',
+        'repertoire_coverage',
+        'game_moves',
+        'games',
+        'sync_metadata',
+        'position_cache',
+        'sync_state'
+      ]
+      const tx = db.transaction(() => {
+        for (const table of tables) {
+          db.prepare(`DELETE FROM ${table}`).run()
+        }
+      })
+      tx()
+      db.prepare('VACUUM').run()
+      logger.info('Database reset complete')
+      return { ok: true, data: { reset: true } }
+    }
+  )
+
   handle('games.getAll', z.object({}), async () => {
     const { rows } = repo.query({}, { field: 'updated_at', dir: 'desc' }, 200, 0)
     return { ok: true, data: { games: rows } }

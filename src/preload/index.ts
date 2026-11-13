@@ -72,7 +72,8 @@ contextBridge.exposeInMainWorld('api', {
   },
   database: {
     backup: () => ipcRenderer.invoke('database.backup', {}),
-    restore: () => ipcRenderer.invoke('database.restore', {})
+    restore: () => ipcRenderer.invoke('database.restore', {}),
+    reset: () => ipcRenderer.invoke('database.reset', {})
   },
   statistics: {
     overview: (filters?: GameFilters) => ipcRenderer.invoke('statistics.overview', filters),

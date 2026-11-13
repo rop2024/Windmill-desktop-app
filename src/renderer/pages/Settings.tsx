@@ -88,6 +88,10 @@ export default function Settings() {
   const [reportError, setReportError] = useState<string | null>(null)
   const [reportGenerating, setReportGenerating] = useState(false)
 
+  const [resetConfirm, setResetConfirm] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  const [resetError, setResetError] = useState<string | null>(null)
+
   useEffect(() => {
     window.api.settings
       .get()
@@ -256,6 +260,22 @@ export default function Settings() {
       setReportGenerating(false)
     }
   }, [reportType, reportFormat])
+
+  const handleReset = useCallback(async () => {
+    setResetError(null)
+    setResetting(true)
+    try {
+      const result = await window.api.database.reset()
+      if (!result.ok) {
+        setResetError(result.error?.message ?? 'Reset failed')
+      }
+    } catch (e) {
+      setResetError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setResetting(false)
+      setResetConfirm(false)
+    }
+  }, [])
 
   const formatDate = (ts: number | null): string => {
     if (!ts) return 'never'
@@ -649,6 +669,55 @@ export default function Settings() {
             {settings.dbLocation || 'user data directory'}
           </div>
           <span className="text-text-dim text-xs font-mono">Read-only. Managed by Electron.</span>
+        </div>
+      </Panel>
+
+      <Panel accent="pink" label="Danger zone">
+        <div className="space-y-3">
+          <span className="text-text-muted text-xs font-mono uppercase block mb-1">
+            Reset everything
+          </span>
+          <span className="text-text-dim text-xs font-mono">
+            Deletes all games, analysis, puzzles, tactics, and synced data. This cannot be undone.
+          </span>
+          {resetConfirm ? (
+            <>
+              <div className="text-pink text-xs font-mono font-bold">
+                Type "DELETE" to confirm:
+              </div>
+              <input
+                type="text"
+                value=""
+                onChange={(e) => setResetConfirm(e.target.value === 'DELETE')}
+                placeholder="DELETE"
+                className="w-full bg-panel border border-pink rounded-none px-3 py-2 text-xs font-mono text-text-primary focus:border-pink focus:outline-none focus:ring-0"
+              />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setResetConfirm(false)}
+                  className="bg-transparent border border-border rounded-none px-3 py-2 text-xs font-mono text-text-muted hover:bg-white/5 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="bg-transparent border border-pink text-pink px-3 py-2 text-xs font-mono uppercase hover:bg-pink/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {resetting ? 'Resetting…' : 'Delete all data'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <button
+              onClick={() => setResetConfirm(true)}
+              disabled={resetting}
+              className="w-full bg-transparent border border-pink text-pink font-mono text-xs uppercase px-4 py-2.5 rounded-none hover:bg-pink/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Reset everything (delete all data)
+            </button>
+          )}
+          {resetError && <div className="text-pink text-xs font-mono">{resetError}</div>}
         </div>
       </Panel>
 

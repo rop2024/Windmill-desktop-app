@@ -628,6 +628,7 @@ declare global {
       database: {
         backup: () => Promise<Result<{ path: string } | null>>
         restore: () => Promise<Result<{ path: string } | null>>
+        reset: () => Promise<Result<{ reset: boolean }>>
       }
       statistics: {
         overview: (filters?: GameFilters) => Promise<Result<OverviewStats>>
