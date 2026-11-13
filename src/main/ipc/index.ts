@@ -738,7 +738,28 @@ export function registerHandlers(): void {
       }, detector)
       activeSyncService = sync
       try {
-        return await sync.sync(username)
+        const result = await sync.sync(username)
+        if (result.ok && result.newGameIds.length > 0) {
+          const settings = await settingsService.get()
+          // Automatically analyze newly imported games in the background so
+          // every page populates without requiring a manual "Analyze all".
+          void (async () => {
+            try {
+              for (const gameId of result.newGameIds) {
+                analysisQueue.enqueue({
+                  gameId,
+                  settings: settings.engine
+                })
+              }
+            } catch (e) {
+              logger.error('Failed to enqueue automatic analysis after sync', {
+                username,
+                error: e instanceof Error ? e.message : String(e)
+              })
+            }
+          })()
+        }
+        return result
       } finally {
         if (activeSyncService === sync) {
           activeSyncService = null

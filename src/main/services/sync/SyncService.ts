@@ -62,6 +62,7 @@ export class SyncService {
     imported: number
     duplicates: number
     found: number
+    newGameIds: string[]
   } | { ok: false; error: string }> {
     this.cancelled = false
     this.abortController = new AbortController()
@@ -118,7 +119,7 @@ export class SyncService {
           invalid: 0,
           username
         })
-        return { ok: true, imported: 0, duplicates: 0, found: 0 }
+        return { ok: true, imported: 0, duplicates: 0, found: 0, newGameIds: [] }
       }
 
       let totalImported = 0
@@ -128,6 +129,7 @@ export class SyncService {
       let failedArchives = 0
       let newestGameTime = lastSyncAt ?? 0
       let totalInvalid = 0
+      const newlyImportedIds: string[] = []
 
       for (const archiveUrl of eligibleArchives) {
         if (this.cancelled) {
@@ -210,7 +212,10 @@ export class SyncService {
                 const result = this.repo.insertGame(game)
                 if (!result.ok) throw new Error(String(result.error))
                 if (result.duplicate) totalDuplicates++
-                else totalImported++
+                else {
+                  totalImported++
+                  if (result.game) newlyImportedIds.push(result.game.id)
+                }
                 if (onlineGame.end_time > archiveNewestGameTime / 1000) {
                   archiveNewestGameTime = onlineGame.end_time * 1000
                 }
@@ -262,7 +267,7 @@ export class SyncService {
         username
       })
 
-      return { ok: true, imported: totalImported, duplicates: totalDuplicates, found: totalFound }
+      return { ok: true, imported: totalImported, duplicates: totalDuplicates, found: totalFound, newGameIds: newlyImportedIds }
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
       logger.error('SyncService.sync failed', { username, error: message })
