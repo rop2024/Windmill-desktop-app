@@ -89,6 +89,7 @@ export default function Settings() {
   const [reportGenerating, setReportGenerating] = useState(false)
 
   const [resetConfirm, setResetConfirm] = useState(false)
+  const [resetConfirmation, setResetConfirmation] = useState('')
   const [resetting, setResetting] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
 
@@ -687,21 +688,24 @@ export default function Settings() {
               </div>
               <input
                 type="text"
-                value=""
-                onChange={(e) => setResetConfirm(e.target.value === 'DELETE')}
+                value={resetConfirmation}
+                onChange={(e) => setResetConfirmation(e.target.value)}
                 placeholder="DELETE"
                 className="w-full bg-panel border border-pink rounded-none px-3 py-2 text-xs font-mono text-text-primary focus:border-pink focus:outline-none focus:ring-0"
               />
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setResetConfirm(false)}
+                  onClick={() => {
+                    setResetConfirmation('')
+                    setResetConfirm(false)
+                  }}
                   className="bg-transparent border border-border rounded-none px-3 py-2 text-xs font-mono text-text-muted hover:bg-white/5 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleReset}
-                  disabled={resetting}
+                  disabled={resetting || resetConfirmation !== 'DELETE'}
                   className="bg-transparent border border-pink text-pink px-3 py-2 text-xs font-mono uppercase hover:bg-pink/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   {resetting ? 'Resetting…' : 'Delete all data'}
@@ -710,7 +714,10 @@ export default function Settings() {
             </>
           ) : (
             <button
-              onClick={() => setResetConfirm(true)}
+              onClick={() => {
+                setResetConfirmation('')
+                setResetConfirm(true)
+              }}
               disabled={resetting}
               className="w-full bg-transparent border border-pink text-pink font-mono text-xs uppercase px-4 py-2.5 rounded-none hover:bg-pink/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
