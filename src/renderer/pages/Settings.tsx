@@ -92,7 +92,10 @@ export default function Settings() {
     window.api.settings
       .get()
       .then((result) => {
-        if (result.ok) setSettings(result.data)
+        if (result.ok) {
+          setSettings(result.data)
+          setSyncUsername(result.data.chessComUsername ?? '')
+        }
       })
       .finally(() => setLoading(false))
   }, [])

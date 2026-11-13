@@ -489,10 +489,21 @@ export class TacticalDetector {
       allTactics.push(...plyTactics)
     }
 
-    this.clearTactics(gameId)
-    this.storeTactics(gameId, allTactics)
+    // Count each distinct tactic event once per game, not once per ply it
+    // happens to be visible on. Dedup by tactic type + target square.
+    const seenKeys = new Set<string>()
+    const distinctTactics: DetectedTactic[] = []
+    for (const t of allTactics) {
+      const key = tacticKey(t)
+      if (seenKeys.has(key)) continue
+      seenKeys.add(key)
+      distinctTactics.push(t)
+    }
 
-    return this.buildGameTactics(gameId, allTactics)
+    this.clearTactics(gameId)
+    this.storeTactics(gameId, distinctTactics)
+
+    return this.buildGameTactics(gameId, distinctTactics)
   }
 
   getForGame(gameId: string): GameTactics {

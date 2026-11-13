@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useStatsStore } from '@stats/store'
+import type { Game } from '@shared/game'
 import {
   LineChart,
   Line,
@@ -16,6 +17,7 @@ import { KpiCard } from '../components/ui/KpiCard'
 import { PrimaryButton } from '../components/ui/PrimaryButton'
 import { FilterChip } from '../components/ui/FilterChip'
 import { ProgressBar } from '../components/ui/ProgressBar'
+import { ChessBoard } from '../components/ChessBoard'
 
 const TIME_CLASSES = ['bullet', 'blitz', 'rapid', 'classical', 'daily'] as const
 
@@ -144,6 +146,24 @@ export default function Dashboard() {
 const [achievements, setAchievements] = useState<AchievementProgress[]>([])
 
 const [timeline, setTimeline] = useState<TimelineData | null>(null)
+const [lastGame, setLastGame] = useState<Game | null>(null)
+const [lastGameLoading, setLastGameLoading] = useState(false)
+
+const loadLastGame = useCallback(async () => {
+  setLastGameLoading(true)
+  try {
+    const result = await window.api.games.query({ limit: 1 })
+    if (result.ok && result.data.games.length > 0) setLastGame(result.data.games[0])
+  } catch {
+    // ignore
+  } finally {
+    setLastGameLoading(false)
+  }
+}, [])
+
+useEffect(() => {
+  loadLastGame()
+}, [loadLastGame])
 
   useEffect(() => {
     window.api.getVersion().then((result) => {
@@ -179,7 +199,7 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
       const res = await window.api.achievements.list()
       if (res.ok) setAchievements(res.data)
 
-      const tl = await window.api.timeline.summary()
+      const tl = await window.api.timeline.summary(filters)
       if (tl.ok) setTimeline(tl.data)
     } finally {
       setLoading(false)
@@ -239,15 +259,9 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
           <KpiCard accent="cyan" value={overview.totalGames.toLocaleString()} label="Games" />
           <KpiCard
             accent="green"
-            value={overview.wins.toLocaleString()}
-            label="Results"
-            sub={`${overview.wins}W · ${overview.losses}L · ${overview.draws}D`}
-          />
-          <KpiCard
-            accent="yellow"
-            value={overview.winRate.toFixed(1)}
-            label="Win rate"
-            sub={`${overview.wins}W · ${overview.losses}L · ${overview.draws}D`}
+            value={`${overview.wins}W · ${overview.losses}L · ${overview.draws}D`}
+            label="Record"
+            sub={`Win rate ${overview.winRate.toFixed(1)}%`}
           />
           <KpiCard
             accent="magenta"
@@ -278,6 +292,7 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 10, fill: '#5D5D6A', fontFamily: 'JetBrains Mono' }}
+                    tickCount={8}
                     axisLine={false}
                     tickLine={false}
                   />
@@ -337,6 +352,52 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
         </Panel>
       </div>
 
+      <Panel accent="cyan" label="Last game">
+        <div className="flex flex-col lg:flex-row gap-4 items-start">
+          {lastGameLoading ? (
+            <div className="flex min-h-[260px] items-center justify-center text-text-muted text-xs font-mono">
+              Loading last game…
+            </div>
+          ) : lastGame ? (
+            <>
+              <div className="flex-1 w-full lg:w-1/3 space-y-2">
+                <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                  <span className="text-[10px] font-mono text-text-muted uppercase">Opponent</span>
+                  <span className="text-sm font-sans font-bold text-text-primary">{lastGame.opponent ?? 'Unknown'}</span>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                  <span className="text-[10px] font-mono text-text-muted uppercase">Result</span>
+                  <span className={`text-sm font-mono font-bold ${lastGame.outcome === 'win' ? 'text-green' : lastGame.outcome === 'loss' ? 'text-pink' : 'text-yellow'}`}>
+                    {lastGame.outcome ?? lastGame.result}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1.5 border-b border-border/50">
+                  <span className="text-[10px] font-mono text-text-muted uppercase">Rating</span>
+                  <span className="text-sm font-mono text-text-primary">{lastGame.playerRating != null ? lastGame.playerRating.toLocaleString() : '—'}</span>
+                </div>
+                <div className="flex justify-between items-center px-2 py-1.5">
+                  <span className="text-[10px] font-mono text-text-muted uppercase">Played</span>
+                  <span className="text-sm font-mono text-text-primary">{fmtDate(lastGame.playedAt ?? null)}</span>
+                </div>
+              </div>
+              <div className="flex-none lg:w-2/3 h-[240px] w-[240px]">
+                <ChessBoard fen="rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1" orientation="w" squareSize={30} disabled />
+              </div>
+            </>
+          ) : (
+            <div className="flex min-h-[260px] flex-col items-center justify-center gap-2 text-text-muted text-xs font-mono">
+              <span>No games yet</span>
+              <button
+                onClick={() => window.api.pgn.import()}
+                className="border border-cyan px-3 py-1 text-cyan hover:bg-cyan/10 transition-colors"
+              >
+                Import a PGN
+              </button>
+            </div>
+          )}
+        </div>
+      </Panel>
+
       <Panel accent="orange" label="Color performance">
         <div className="space-y-3">
           {colorResult ? (
@@ -376,14 +437,14 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
             <tbody>
               {openings.slice(0, 8).map((o) => (
                 <tr key={o.opening} className="border-b border-border/50 hover:bg-white/5 last:border-0">
-                  <td className="px-3 py-2 text-xs font-mono text-yellow">{o.opening}</td>
-                  <td className="px-3 py-2 text-xs font-sans font-bold text-text-primary">{o.opening}</td>
-                  <td className="px-3 py-2 text-xs font-mono text-text-muted text-right">{o.games}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-yellow">{o.opening}</td>
+                  <td className="px-3 py-2 text-sm font-sans font-bold text-text-primary">{o.opening}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-text-primary text-right">{o.games}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="w-24">
                       <ProgressBar value={o.winRate} accent="orange" />
                     </div>
-                    <span className="text-xs font-mono text-text-muted mt-0.5 block">
+                    <span className="text-sm font-mono text-text-primary mt-0.5 block">
                       {o.winRate.toFixed(1)}%
                     </span>
                   </td>
@@ -548,6 +609,7 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
                         <XAxis
                           dataKey="date"
                           tick={{ fontSize: 10, fill: '#5D5D6A', fontFamily: 'JetBrains Mono' }}
+                          tickCount={8}
                           axisLine={false}
                           tickLine={false}
                         />
@@ -666,22 +728,22 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
             <tbody>
               {opponents.slice(0, 8).map((o) => (
                 <tr key={o.opponent} className="hover:bg-white/5 last:border-0">
-                  <td className="px-3 py-2 text-xs font-sans font-bold text-text-primary">{o.opponent}</td>
-                  <td className="px-3 py-2 text-xs font-mono text-text-muted text-right">{o.games}</td>
+                  <td className="px-3 py-2 text-sm font-sans font-bold text-text-primary">{o.opponent}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-text-primary text-right">{o.games}</td>
                   <td className="px-3 py-2 text-right">
                     <div className="w-24">
                       <ProgressBar value={o.winRate} accent="orange" />
                     </div>
-                    <span className="text-xs font-mono text-text-muted mt-0.5 block">{o.winRate.toFixed(1)}%</span>
+                    <span className="text-sm font-mono text-text-primary mt-0.5 block">{o.winRate.toFixed(1)}%</span>
                   </td>
-                  <td className="px-3 py-2 text-xs font-mono text-green text-right">{o.wins}</td>
-                  <td className="px-3 py-2 text-xs font-mono text-pink text-right">{o.losses}</td>
-                  <td className="px-3 py-2 text-xs font-mono text-yellow text-right">{o.draws}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-green text-right">{o.wins}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-pink text-right">{o.losses}</td>
+                  <td className="px-3 py-2 text-sm font-mono text-yellow text-right">{o.draws}</td>
                 </tr>
               ))}
               {opponents.length === 0 && (
                 <tr>
-                  <td className="px-3 py-4 text-center text-text-muted text-xs font-mono" colSpan={6}>
+                  <td className="px-3 py-2 text-center text-text-primary text-sm font-mono" colSpan={6}>
                     No opponent data
                   </td>
                 </tr>
@@ -715,7 +777,7 @@ const [timeline, setTimeline] = useState<TimelineData | null>(null)
             </div>
           ))}
           {timeControls.length === 0 && (
-            <div className="text-text-muted text-xs font-mono py-2">No time control data</div>
+            <div className="text-text-primary text-sm font-mono py-2">No time control data</div>
           )}
         </div>
       </Panel>

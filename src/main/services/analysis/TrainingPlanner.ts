@@ -55,6 +55,16 @@ export class TrainingPlanner {
     const date = new Date().toISOString().slice(0, 10)
     const weakness = weaknessEngine.profile(filters)
 
+    if (weakness.gamesAnalyzed === 0) {
+      return {
+        date,
+        summary: "Today's Plan — run engine analysis on your games first to generate a training plan.",
+        items: [],
+        totalPuzzles: 0,
+        weaknessSource: 'none'
+      }
+    }
+
     const focusAreas = [...weakness.categories].sort((a, b) => a.stars - b.stars).slice(0, 3)
 
     const items: PlanItem[] = []

@@ -73,7 +73,7 @@ function populateStatistics(game: ParsedGame): void {
   if (playerColor === 'w' || playerColor === 'b') game.playerColor = playerColor
   else if (normalizedPlayer && white.toLowerCase() === normalizedPlayer) game.playerColor = 'w'
   else if (normalizedPlayer && black.toLowerCase() === normalizedPlayer) game.playerColor = 'b'
-  else game.playerColor = 'w'
+  else game.playerColor = null
 
   const playerElo = game.playerColor === 'w' ? game.headers.get('WhiteElo') : game.headers.get('BlackElo')
   const opponentElo = game.playerColor === 'w' ? game.headers.get('BlackElo') : game.headers.get('WhiteElo')
@@ -94,6 +94,7 @@ function parseRating(value: string | undefined): number | null {
 function outcomeFor(result: ParsedGame['result'], color: string | null | undefined): string | null {
   if (result === '1/2-1/2') return 'draw'
   if (result !== '1-0' && result !== '0-1') return null
+  if (color !== 'w' && color !== 'b') return null
   return (result === '1-0') === (color === 'w') ? 'win' : 'loss'
 }
 

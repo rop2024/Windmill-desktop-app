@@ -140,12 +140,19 @@ export default function Games() {
   }
 
   const displayOutcome = (g: { outcome?: string | null | undefined; result: string; playerColor?: string | null }): string => {
-    if (g.outcome) return g.outcome
-    // Fall back to deriving from the raw PGN result + player color
     if (g.result === '1/2-1/2') return 'draw'
-    if (g.result === '1-0') return g.playerColor === 'w' ? 'win' : 'loss'
-    if (g.result === '0-1') return g.playerColor === 'b' ? 'win' : 'loss'
+    if (g.result !== '1-0' && g.result !== '0-1') return '—'
+    if (g.playerColor === 'w' || g.playerColor === 'b') {
+      return (g.result === '1-0') === (g.playerColor === 'w') ? 'win' : 'loss'
+    }
+    if (g.outcome) return g.outcome
     return '—'
+  }
+
+  const OPENING_HEADER = /\[Opening "(.*?)"/i
+  const displayOpening = (pgn: string): string => {
+    const match = pgn.match(OPENING_HEADER)
+    return match ? match[1] : '—'
   }
 
   const pages = Math.ceil(total / pageSize) || 1
@@ -281,7 +288,7 @@ export default function Games() {
                       {new Date(game.updatedAt).toLocaleDateString()}
                     </td>
                     <td className="px-3 py-2 text-sm font-sans font-bold text-text-primary truncate w-[25%]">
-                      {game.pgn.slice(0, 40)}...
+                      {displayOpening(game.pgn)}
                     </td>
                     <td className="px-3 py-2 text-sm text-right w-[10%]">
                       <Link

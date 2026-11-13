@@ -334,12 +334,18 @@ function deriveStatistics(
   const configuredPlayer = player || configuredPlayerNames.find((name) =>
     name === white.toLowerCase() || name === black.toLowerCase()
   ) || ''
-  const playerColor: PlayerColor = configuredPlayer && black.toLowerCase() === configuredPlayer ? 'b' : 'w'
-  const rating = Number.parseInt(header(pgn, playerColor === 'w' ? 'WhiteElo' : 'BlackElo') ?? '', 10)
-  const opponentRating = Number.parseInt(header(pgn, playerColor === 'w' ? 'BlackElo' : 'WhiteElo') ?? '', 10)
+  const playerColor: PlayerColor | null = configuredPlayer
+    ? black.toLowerCase() === configuredPlayer ? 'b' : 'w'
+    : null
+  const rating = playerColor != null
+    ? Number.parseInt(header(pgn, playerColor === 'w' ? 'WhiteElo' : 'BlackElo') ?? '', 10)
+    : NaN
+  const opponentRating = playerColor != null
+    ? Number.parseInt(header(pgn, playerColor === 'w' ? 'BlackElo' : 'WhiteElo') ?? '', 10)
+    : NaN
   const outcome = result === '1/2-1/2'
     ? 'draw'
-    : result === '1-0' || result === '0-1'
+    : (result === '1-0' || result === '0-1') && playerColor != null
       ? ((result === '1-0') === (playerColor === 'w') ? 'win' : 'loss')
       : null
   const date = header(pgn, 'UTCDate') ?? header(pgn, 'Date')
@@ -350,7 +356,7 @@ function deriveStatistics(
   return {
     playerColor,
     playerRating: Number.isFinite(rating) ? rating : null,
-    opponent: playerColor === 'w' ? black || null : white || null,
+    opponent: playerColor === 'w' ? black || null : playerColor === 'b' ? white || null : null,
     opponentRating: Number.isFinite(opponentRating) ? opponentRating : null,
     outcome: outcome as GameOutcome | null,
     timeClass: (timeClass as TimeClass | undefined) ?? null,

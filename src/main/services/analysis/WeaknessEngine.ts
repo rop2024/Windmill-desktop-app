@@ -207,10 +207,12 @@ export class WeaknessEngine {
 
     let firstDate: number | null = null
     let lastDate: number | null = null
+    let hasAnyAnalysis = false
 
     for (const game of games) {
       const plys = this.fetchPlys(game.id)
       const tactics = this.fetchTactics(game.id)
+      if (plys.length > 0) hasAnyAnalysis = true
       if (game.played_at != null) {
         if (firstDate === null || game.played_at < firstDate) firstDate = game.played_at
         if (lastDate === null || game.played_at > lastDate) lastDate = game.played_at
@@ -254,6 +256,25 @@ export class WeaknessEngine {
       agg.calculation.errors += s.calculation.missedTactics + s.calculation.evalDrops
       agg.calculation.scoreSum += calculationScore
       agg.calculation.count++
+    }
+
+    if (!hasAnyAnalysis) {
+      return {
+        categories: ALL_CATEGORIES.map((c) => ({
+          category: c,
+          stars: 0,
+          score: 0,
+          label: 'No data',
+          signal: CATEGORY_SIGNAL[c],
+          moves: 0,
+          errors: 0
+        })),
+        gamesAnalyzed: 0,
+        dateRange: { from: null, to: null },
+        trend: 'stable',
+        topWeakness: null,
+        topStrength: null
+      }
     }
 
     const categories: CategoryRating[] = ALL_CATEGORIES.map((c) => {
